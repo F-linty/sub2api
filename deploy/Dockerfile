@@ -28,7 +28,8 @@ RUN npm config set registry https://registry.npmmirror.com && \
 
 # Install dependencies first (better caching)
 COPY frontend/package.json frontend/pnpm-lock.yaml ./
-RUN pnpm install --frozen-lockfile=false --network-concurrency 1
+RUN echo "fetch-timeout=600000\nfetch-retries=5" >> .npmrc && \
+    pnpm install --frozen-lockfile=false
 
 # Copy frontend source and build.
 # LegalDocumentView.vue (admin-compliance gate) build-time imports
