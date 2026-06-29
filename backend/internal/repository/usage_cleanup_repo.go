@@ -128,7 +128,7 @@ func (r *usageCleanupRepository) ClaimNextPendingTask(ctx context.Context, stale
 				OR (
 					status = $2
 					AND started_at IS NOT NULL
-					AND started_at < NOW() - ($3 * interval '1 second')
+					AND started_at < NOW() - ($3::int8 * interval '1 second')
 				)
 			ORDER BY created_at ASC
 			LIMIT 1

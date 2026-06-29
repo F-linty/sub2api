@@ -19,6 +19,7 @@ import (
 	"github.com/Wei-Shaw/sub2api/ent/authidentitychannel"
 	"github.com/Wei-Shaw/sub2api/ent/identityadoptiondecision"
 	dbpredicate "github.com/Wei-Shaw/sub2api/ent/predicate"
+	"github.com/Wei-Shaw/sub2api/internal/pkg/dbdialect"
 	infraerrors "github.com/Wei-Shaw/sub2api/internal/pkg/errors"
 	"github.com/Wei-Shaw/sub2api/internal/service"
 )
@@ -216,7 +217,10 @@ func advisoryLockHash(key string) int64 {
 func lockRepositoryScopedKeys(ctx context.Context, client *dbent.Client, exec sqlQueryExecutor, keys ...string) (func(), error) {
 	release := repositoryScopedKeyLocks.lock(keys...)
 	normalized := normalizeLockKeys(keys...)
-	if len(normalized) == 0 || client == nil || exec == nil || client.Driver().Dialect() != dialect.Postgres {
+	// CockroachDB uses the Postgres ent dialect but does NOT implement session/xact
+	// advisory locks, so skip the DB lock and rely on the in-process mutex above plus
+	// CRDB's SERIALIZABLE isolation (conflicting txns abort with 40001 and retry).
+	if len(normalized) == 0 || client == nil || exec == nil || client.Driver().Dialect() != dialect.Postgres || dbdialect.IsCockroach() {
 		return release, nil
 	}
 

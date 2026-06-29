@@ -1,0 +1,4 @@
+-- CockroachDB variant of 035: no-op. The PostgreSQL original only creates monthly
+-- partitions when usage_logs is ALREADY a partitioned table; on a fresh install it is a
+-- plain table, so the original is a no-op too. CRDB partitioning differs from PG's
+-- declarative PARTITION OF and is not needed here.

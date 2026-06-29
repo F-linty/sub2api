@@ -82,12 +82,27 @@ type SetupConfig struct {
 }
 
 type DatabaseConfig struct {
-	Host     string `json:"host" yaml:"host"`
-	Port     int    `json:"port" yaml:"port"`
-	User     string `json:"user" yaml:"user"`
+	Host   string `json:"host" yaml:"host"`
+	Port   int    `json:"port" yaml:"port"`
+	User   string `json:"user" yaml:"user"`
 	Password string `json:"password" yaml:"password"`
 	DBName   string `json:"dbname" yaml:"dbname"`
 	SSLMode  string `json:"sslmode" yaml:"sslmode"`
+	Driver   string `json:"driver" yaml:"driver"` // "postgres" (default) or "cockroach"
+}
+
+func (c *DatabaseConfig) isCockroach() bool {
+	return strings.EqualFold(c.Driver, "cockroach")
+}
+
+// maintenanceDSN returns a DSN for the DB server's maintenance database, used to
+// check/create the target database. PG uses "postgres"; CRDB uses "defaultdb".
+func (c *DatabaseConfig) maintenanceDSN() string {
+	maintenance := "postgres"
+	if c.isCockroach() {
+		maintenance = "defaultdb"
+	}
+	return buildPostgresDSN(c, maintenance)
 }
 
 type RedisConfig struct {
@@ -168,7 +183,7 @@ func buildPostgresDSN(cfg *DatabaseConfig, dbName string) string {
 }
 
 func buildDatabaseConnectionDSNs(cfg *DatabaseConfig) (bootstrapDSN, targetDSN string) {
-	return buildPostgresDSN(cfg, "postgres"), buildPostgresDSN(cfg, cfg.DBName)
+	return cfg.maintenanceDSN(), buildPostgresDSN(cfg, cfg.DBName)
 }
 
 // TestDatabaseConnection tests the database connection and creates database if not exists
@@ -199,11 +214,45 @@ func TestDatabaseConnection(cfg *DatabaseConfig) error {
 		return fmt.Errorf("ping failed: %w", err)
 	}
 
-	// Check if target database exists
+	// Check if target database exists. pg_database is PG-only; CockroachDB exposes
+	// databases via SHOW DATABASES instead, so branch on the driver.
 	var exists bool
-	row := db.QueryRowContext(ctx, "SELECT EXISTS(SELECT 1 FROM pg_database WHERE datname = $1)", cfg.DBName)
-	if err := row.Scan(&exists); err != nil {
-		return fmt.Errorf("failed to check database existence: %w", err)
+	if cfg.isCockroach() {
+		rows, qErr := db.QueryContext(ctx, "SHOW DATABASES")
+		if qErr != nil {
+			return fmt.Errorf("failed to list databases: %w", qErr)
+		}
+		defer rows.Close()
+		for rows.Next() {
+			// SHOW DATABASES columns: database_name, owner, primary_region, secondary_region, regions, survival_goal
+			// We only need the first column.
+			var name string
+			if sErr := rows.Scan(&name); sErr != nil {
+				// CRDB may return more columns depending on version — scan only what we need.
+				cols, _ := rows.Columns()
+				vals := make([]any, len(cols))
+				vals[0] = &name
+				for i := 1; i < len(cols); i++ {
+					var dummy any
+					vals[i] = &dummy
+				}
+				if sErr2 := rows.Scan(vals...); sErr2 != nil {
+					return fmt.Errorf("failed to scan database name: %w", sErr2)
+				}
+			}
+			if strings.EqualFold(name, cfg.DBName) {
+				exists = true
+				break
+			}
+		}
+		if err := rows.Err(); err != nil {
+			return fmt.Errorf("failed to iterate databases: %w", err)
+		}
+	} else {
+		row := db.QueryRowContext(ctx, "SELECT EXISTS(SELECT 1 FROM pg_database WHERE datname = $1)", cfg.DBName)
+		if err := row.Scan(&exists); err != nil {
+			return fmt.Errorf("failed to check database existence: %w", err)
+		}
 	}
 
 	// Create database if not exists
@@ -557,6 +606,7 @@ func AutoSetupFromEnv() error {
 			Password: getEnvOrDefault("DATABASE_PASSWORD", ""),
 			DBName:   getEnvOrDefault("DATABASE_DBNAME", "sub2api"),
 			SSLMode:  getEnvOrDefault("DATABASE_SSLMODE", "disable"),
+			Driver:   getEnvOrDefault("DATABASE_DRIVER", "postgres"),
 		},
 		Redis: RedisConfig{
 			Host:      getEnvOrDefault("REDIS_HOST", "localhost"),

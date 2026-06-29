@@ -12,7 +12,7 @@ import (
 
 func TestOpsRepositoryLookupDeletedKeyAudit(t *testing.T) {
 	ctx := context.Background()
-	_, _ = integrationDB.ExecContext(ctx, "TRUNCATE deleted_api_key_audits RESTART IDENTITY")
+	_, _ = execTruncate(ctx, integrationDB, "TRUNCATE deleted_api_key_audits RESTART IDENTITY")
 	repo := NewOpsRepository(integrationDB).(*opsRepository)
 
 	// 同一 key 两条审计,取最近一条(deleted_at DESC, id DESC)

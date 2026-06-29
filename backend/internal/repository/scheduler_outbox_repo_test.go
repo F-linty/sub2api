@@ -7,6 +7,8 @@ import (
 
 	sqlmock "github.com/DATA-DOG/go-sqlmock"
 	"github.com/stretchr/testify/require"
+
+	"github.com/Wei-Shaw/sub2api/internal/pkg/dbdialect"
 )
 
 func TestSchedulerOutboxRepositoryDeleteConsumedUpToUsesBoundedCTE(t *testing.T) {
@@ -58,6 +60,12 @@ func TestSchedulerOutboxRepositoryTryAcquireCleanupLock(t *testing.T) {
 	require.NoError(t, err)
 	defer func() { _ = db.Close() }()
 
+	// This test asserts the PostgreSQL advisory-lock path; pin the dialect so it is
+	// unaffected by the process-global flag (the integration harness sets cockroach).
+	prevDialect := dbdialect.IsCockroach()
+	dbdialect.SetCockroach(false)
+	defer dbdialect.SetCockroach(prevDialect)
+
 	repo := &schedulerOutboxRepository{db: db}
 	mock.ExpectQuery(regexp.QuoteMeta("SELECT pg_try_advisory_lock(hashtext('scheduler_outbox_cleanup'))")).
 		WillReturnRows(sqlmock.NewRows([]string{"pg_try_advisory_lock"}).AddRow(true))
@@ -78,6 +86,10 @@ func TestSchedulerOutboxRepositoryTryAcquireCleanupLockUnavailable(t *testing.T)
 	db, mock, err := sqlmock.New()
 	require.NoError(t, err)
 	defer func() { _ = db.Close() }()
+
+	prevDialect := dbdialect.IsCockroach()
+	dbdialect.SetCockroach(false)
+	defer dbdialect.SetCockroach(prevDialect)
 
 	repo := &schedulerOutboxRepository{db: db}
 	mock.ExpectQuery(regexp.QuoteMeta("SELECT pg_try_advisory_lock(hashtext('scheduler_outbox_cleanup'))")).

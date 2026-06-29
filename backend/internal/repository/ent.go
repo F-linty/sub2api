@@ -6,16 +6,18 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/Wei-Shaw/sub2api/ent"
 	"github.com/Wei-Shaw/sub2api/internal/config"
+	"github.com/Wei-Shaw/sub2api/internal/pkg/dbdialect"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/timezone"
 	"github.com/Wei-Shaw/sub2api/migrations"
 
 	"entgo.io/ent/dialect"
 	entsql "entgo.io/ent/dialect/sql"
-	_ "github.com/lib/pq" // PostgreSQL 驱动，通过副作用导入注册驱动
+	"github.com/lib/pq" // PostgreSQL 驱动（注册驱动 + pq.NewConnector）
 )
 
 // InitEnt 初始化 Ent ORM 客户端并返回客户端实例和底层的 *sql.DB。
@@ -46,20 +48,52 @@ func InitEnt(cfg *config.Config) (*ent.Client, *sql.DB, error) {
 	// 时区信息会传递给 PostgreSQL，确保数据库层面的时间处理正确。
 	dsn := cfg.Database.DSNWithTimezone(cfg.Timezone)
 
-	// 使用 Ent 的 SQL 驱动打开 PostgreSQL 连接。
-	// dialect.Postgres 指定使用 PostgreSQL 方言进行 SQL 生成。
-	drv, err := entsql.Open(dialect.Postgres, dsn)
-	if err != nil {
-		return nil, nil, err
+	// 使用 Ent 的 SQL 驱动打开数据库连接（PostgreSQL/CockroachDB 共用 dialect.Postgres）。
+	//
+	// CockroachDB 且启用 read-committed 时，包一层 connector，在每个新连接上执行
+	// SET default_transaction_isolation = 'read committed'，使整个连接池与 PostgreSQL
+	// 默认隔离级别一致（本项目无 40001 序列化重试；CRDB 默认 SERIALIZABLE 会在高并发
+	// 写路径上以 40001 中止事务）。ALTER DATABASE/ROLE SET 在 CRDB 上不会传播该 GUC，
+	// 故必须按连接 SET。
+	var drv *entsql.Driver
+	if cfg.Database.IsCockroach() && cfg.Database.CockroachReadCommitted {
+		base, connErr := pq.NewConnector(dsn)
+		if connErr != nil {
+			return nil, nil, connErr
+		}
+		sqlDB := sql.OpenDB(cockroachReadCommittedConnector{base: base})
+		drv = entsql.OpenDB(dialect.Postgres, sqlDB)
+		slog.Info("CockroachDB connections will use read committed isolation")
+	} else {
+		opened, openErr := entsql.Open(dialect.Postgres, dsn)
+		if openErr != nil {
+			return nil, nil, openErr
+		}
+		drv = opened
 	}
 	applyDBPoolSettings(drv.DB(), cfg)
+
+	// 解析数据库方言（postgres / cockroach）。配置为权威来源，
+	// 运行时 SELECT version() 仅用于纠正误配置并记录告警。
+	detectCtx, detectCancel := context.WithTimeout(context.Background(), 10*time.Second)
+	dbDialect := resolveDialect(detectCtx, drv.DB(), cfg)
+	detectCancel()
+	if cfg.Database.IsCockroach() != dbDialect.IsCockroach() {
+		slog.Warn("database dialect mismatch: configuration overridden by runtime detection",
+			"configured", cfg.Database.DriverName(),
+			"detected", string(dbDialect),
+		)
+	}
+	// 发布到进程级方言标志，供 repository/service 各层的低级锁助手分支使用。
+	dbdialect.SetCockroach(dbDialect.IsCockroach())
+	slog.Info("database dialect resolved", "dialect", string(dbDialect))
 
 	// 确保数据库 schema 已准备就绪。
 	// SQL 迁移文件是 schema 的权威来源（source of truth）。
 	// 这种方式比 Ent 的自动迁移更可控，支持复杂的迁移场景。
 	migrationCtx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	defer cancel()
-	if err := applyMigrationsFS(migrationCtx, drv.DB(), migrations.FS); err != nil {
+	if err := applyMigrationsFS(migrationCtx, drv.DB(), migrations.FS, dbDialect); err != nil {
 		_ = drv.Close() // 迁移失败时关闭驱动，避免资源泄露
 		return nil, nil, err
 	}

@@ -2,12 +2,14 @@ package repository
 
 import (
 	"context"
+	"crypto/rand"
 	"crypto/sha256"
 	"database/sql"
 	"encoding/hex"
 	"errors"
 	"fmt"
 	"io/fs"
+	"os"
 	"sort"
 	"strings"
 	"time"
@@ -96,7 +98,13 @@ func ApplyMigrations(ctx context.Context, db *sql.DB) error {
 	if db == nil {
 		return errors.New("nil sql db")
 	}
-	return applyMigrationsFS(ctx, db, migrations.FS)
+	// 探测真实引擎以选择迁移锁策略：CockroachDB 不支持 session 级 advisory lock，
+	// 改用 schema_migration_lock 租约表。探测失败时回退 PostgreSQL（既有行为）。
+	dialect := detectDialect(ctx, db)
+	if dialect == "" {
+		dialect = DialectPostgres
+	}
+	return applyMigrationsFS(ctx, db, migrations.FS, dialect)
 }
 
 // applyMigrationsFS 是迁移执行的核心实现。
@@ -117,21 +125,19 @@ func ApplyMigrations(ctx context.Context, db *sql.DB) error {
 //   - ctx: 上下文
 //   - db: 数据库连接
 //   - fsys: 包含迁移文件的文件系统（通常是 embed.FS）
-func applyMigrationsFS(ctx context.Context, db *sql.DB, fsys fs.FS) error {
+func applyMigrationsFS(ctx context.Context, db *sql.DB, fsys fs.FS, dialect Dialect) error {
 	if db == nil {
 		return errors.New("nil sql db")
 	}
 
 	// 获取分布式锁，确保多实例部署时只有一个实例执行迁移。
-	// 这是 PostgreSQL 特有的 Advisory Lock 机制。
-	if err := pgAdvisoryLock(ctx, db); err != nil {
+	// PostgreSQL 使用 Advisory Lock；CockroachDB 不支持 session 级 advisory lock，
+	// 改用 schema_migration_lock 租约表（见 acquireMigrationLock）。
+	release, err := acquireMigrationLock(ctx, db, dialect)
+	if err != nil {
 		return err
 	}
-	defer func() {
-		// 无论迁移是否成功，都要释放锁。
-		// 使用 context.Background() 确保即使原 ctx 已取消也能释放锁。
-		_ = pgAdvisoryUnlock(context.Background(), db)
-	}()
+	defer release()
 
 	// 创建迁移记录表（如果不存在）。
 	// 该表记录所有已应用的迁移及其校验和。
@@ -162,6 +168,16 @@ func applyMigrationsFS(ctx context.Context, db *sql.DB, fsys fs.FS) error {
 		content := strings.TrimSpace(string(contentBytes))
 		if content == "" {
 			continue // 跳过空文件
+		}
+
+		// CockroachDB：若存在同名覆盖文件，则用其内容替换顶层 PostgreSQL 版本。
+		// schema_migrations 仍以原文件名记录，覆盖内容参与 checksum（与 PG 库相互独立）。
+		overlaid := false
+		if dialect.IsCockroach() {
+			if override, ok := cockroachOverlay(name); ok {
+				content = override
+				overlaid = true
+			}
 		}
 
 		// 计算文件内容的 SHA256 校验和，用于检测文件是否被修改。
@@ -195,6 +211,16 @@ func applyMigrationsFS(ctx context.Context, db *sql.DB, fsys fs.FS) error {
 		}
 		if !errors.Is(rowErr, sql.ErrNoRows) {
 			return fmt.Errorf("check migration %s: %w", name, rowErr)
+		}
+
+		// CockroachDB 走独立路径：按语句 autocommit 执行，绕开 PG 专属的
+		// 事务包裹与 advisory/CONCURRENTLY 校验。这样可规避 CRDB 的异步 schema
+		// change 限制（ADD COLUMN 与其回填/索引须分别提交）。
+		if dialect.IsCockroach() {
+			if err := applyCockroachMigration(ctx, db, name, content, checksum, overlaid); err != nil {
+				return err
+			}
+			continue
 		}
 
 		nonTx, err := validateMigrationExecutionMode(name, content)
@@ -253,6 +279,52 @@ func applyMigrationsFS(ctx context.Context, db *sql.DB, fsys fs.FS) error {
 		}
 	}
 
+	return nil
+}
+
+// cockroachOverlayFS 提供 CockroachDB 方言的迁移覆盖文件，测试可替换为自定义 fs.FS。
+var cockroachOverlayFS fs.FS = migrations.CockroachFS
+
+// cockroachOverlay 返回指定迁移在 CockroachDB 覆盖目录下的内容（若存在）。
+func cockroachOverlay(name string) (string, bool) {
+	b, err := fs.ReadFile(cockroachOverlayFS, "cockroach/"+name)
+	if err != nil {
+		return "", false
+	}
+	content := strings.TrimSpace(string(b))
+	if content == "" {
+		return "", false
+	}
+	return content, true
+}
+
+// applyCockroachMigration 在 CockroachDB 上应用单个迁移并记录。
+//
+// 覆盖文件与 *_notx.sql 按分号逐句 autocommit 执行，使每个 schema change 单独提交，
+// 规避「ADD COLUMN 与其回填/索引须分别提交」的异步限制；其余迁移整体执行（隐式事务），
+// 与已验证可用的 156 个原始迁移行为一致。迁移仅在全部语句成功后记录，故失败可重跑
+// （DDL 均为 IF NOT EXISTS 幂等）。
+func applyCockroachMigration(ctx context.Context, db *sql.DB, name, content, checksum string, overlaid bool) error {
+	perStatement := overlaid || strings.HasSuffix(name, nonTransactionalMigrationSuffix)
+	if perStatement {
+		// 先剥离 -- 行注释，再按分号切分：避免注释内的分号把单条语句错误切断。
+		cleaned := stripSQLLineComment(content)
+		for i, stmt := range splitSQLStatements(cleaned) {
+			trimmed := strings.TrimSpace(stmt)
+			if trimmed == "" {
+				continue
+			}
+			if _, err := db.ExecContext(ctx, trimmed); err != nil {
+				return fmt.Errorf("apply migration %s (cockroach statement %d): %w", name, i+1, err)
+			}
+		}
+	} else if _, err := db.ExecContext(ctx, content); err != nil {
+		return fmt.Errorf("apply migration %s (cockroach): %w", name, err)
+	}
+
+	if _, err := db.ExecContext(ctx, "INSERT INTO schema_migrations (filename, checksum) VALUES ($1, $2)", name, checksum); err != nil {
+		return fmt.Errorf("record migration %s (cockroach): %w", name, err)
+	}
 	return nil
 }
 
@@ -513,6 +585,120 @@ func stripSQLLineComment(s string) string {
 		}
 	}
 	return strings.TrimSpace(strings.Join(lines, "\n"))
+}
+
+// acquireMigrationLock 根据数据库方言获取迁移序列化锁，返回释放函数。
+//
+//   - PostgreSQL：沿用 session 级 Advisory Lock，行为与历史完全一致。
+//   - CockroachDB：v25.4 不支持 session 级 pg_try_advisory_lock，改用
+//     schema_migration_lock 租约表（带 TTL + 心跳续约），多实例下同样安全。
+func acquireMigrationLock(ctx context.Context, db *sql.DB, dialect Dialect) (func(), error) {
+	if dialect.IsCockroach() {
+		return acquireMigrationLeaseLock(ctx, db)
+	}
+	if err := pgAdvisoryLock(ctx, db); err != nil {
+		return nil, err
+	}
+	return func() {
+		// 使用 context.Background() 确保即使原 ctx 已取消也能释放锁。
+		_ = pgAdvisoryUnlock(context.Background(), db)
+	}, nil
+}
+
+// migrationLockTableDDL 定义 CockroachDB 下的迁移租约锁表（单行）。
+const migrationLockTableDDL = `
+CREATE TABLE IF NOT EXISTS schema_migration_lock (
+	id         INTEGER PRIMARY KEY DEFAULT 1,
+	owner      TEXT NOT NULL,
+	expires_at TIMESTAMPTZ NOT NULL,
+	CONSTRAINT schema_migration_lock_singleton CHECK (id = 1)
+);
+`
+
+const (
+	// migrationLockTTL 是租约有效期：超过该时长未续约则其他实例可抢占，
+	// 避免持锁实例崩溃后死锁。须显著大于心跳间隔。
+	migrationLockTTL = 2 * time.Minute
+	// migrationLockHeartbeat 是心跳续约间隔，持锁期间周期性延长 expires_at。
+	migrationLockHeartbeat = 30 * time.Second
+)
+
+// migrationLockOwner 生成本次持锁的唯一标识（主机名 + PID + 随机串），
+// 用于续约/释放时校验锁归属，避免误释放他人的锁。
+func migrationLockOwner() string {
+	host, _ := os.Hostname()
+	var nonce [8]byte
+	_, _ = rand.Read(nonce[:])
+	return fmt.Sprintf("%s/%d/%s", host, os.Getpid(), hex.EncodeToString(nonce[:]))
+}
+
+// acquireMigrationLeaseLock 在 schema_migration_lock 上获取租约锁（CockroachDB）。
+// 通过条件 UPDATE 抢占空闲/过期/自有租约；获取成功后启动心跳续约。
+func acquireMigrationLeaseLock(ctx context.Context, db *sql.DB) (func(), error) {
+	if _, err := db.ExecContext(ctx, migrationLockTableDDL); err != nil {
+		return nil, fmt.Errorf("create migration lock table: %w", err)
+	}
+	if _, err := db.ExecContext(ctx,
+		`INSERT INTO schema_migration_lock (id, owner, expires_at) VALUES (1, '', now())
+		 ON CONFLICT (id) DO NOTHING`); err != nil {
+		return nil, fmt.Errorf("seed migration lock: %w", err)
+	}
+
+	owner := migrationLockOwner()
+	ttl := fmt.Sprintf("%d seconds", int(migrationLockTTL.Seconds()))
+
+	ticker := time.NewTicker(migrationsLockRetryInterval)
+	defer ticker.Stop()
+	for {
+		res, err := db.ExecContext(ctx,
+			`UPDATE schema_migration_lock
+			 SET owner = $1, expires_at = now() + $2::interval
+			 WHERE id = 1 AND (owner = '' OR owner = $1 OR expires_at < now())`,
+			owner, ttl)
+		if err != nil {
+			return nil, fmt.Errorf("acquire migration lock: %w", err)
+		}
+		if n, _ := res.RowsAffected(); n == 1 {
+			return startMigrationLockHeartbeat(db, owner, ttl), nil
+		}
+		select {
+		case <-ctx.Done():
+			return nil, fmt.Errorf("acquire migration lock: %w", ctx.Err())
+		case <-ticker.C:
+		}
+	}
+}
+
+// startMigrationLockHeartbeat 周期性续约租约，返回的释放函数会停止心跳并清空锁。
+func startMigrationLockHeartbeat(db *sql.DB, owner, ttl string) func() {
+	stop := make(chan struct{})
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		t := time.NewTicker(migrationLockHeartbeat)
+		defer t.Stop()
+		for {
+			select {
+			case <-stop:
+				return
+			case <-t.C:
+				hbCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+				_, _ = db.ExecContext(hbCtx,
+					`UPDATE schema_migration_lock SET expires_at = now() + $2::interval
+					 WHERE id = 1 AND owner = $1`, owner, ttl)
+				cancel()
+			}
+		}
+	}()
+	return func() {
+		close(stop)
+		<-done
+		rc, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		_, _ = db.ExecContext(rc,
+			`UPDATE schema_migration_lock SET owner = '', expires_at = now()
+			 WHERE id = 1 AND owner = $1`, owner)
+	}
 }
 
 // pgAdvisoryLock 获取 PostgreSQL Advisory Lock。

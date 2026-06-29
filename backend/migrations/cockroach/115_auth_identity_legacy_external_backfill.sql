@@ -1,0 +1,3 @@
+-- CockroachDB variant of 115: no-op. The PostgreSQL original backfills auth_identities
+-- from the legacy user_external_identities table (guarded by its existence) and is a
+-- no-op when that table is absent. Fresh installs never had that legacy table.

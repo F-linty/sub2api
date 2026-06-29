@@ -26,6 +26,10 @@ func TestApplyMigrations_DelegatesToApplyMigrationsFS(t *testing.T) {
 	require.NoError(t, err)
 	defer func() { _ = db.Close() }()
 
+	// ApplyMigrations 先探测方言（SELECT version()）再取锁；此处返回 PostgreSQL，
+	// 走 Advisory Lock 路径，保持既有行为。
+	mock.ExpectQuery("SELECT version\\(\\)").
+		WillReturnRows(sqlmock.NewRows([]string{"version"}).AddRow("PostgreSQL 16.2"))
 	mock.ExpectQuery("SELECT pg_try_advisory_lock\\(\\$1\\)").
 		WithArgs(migrationsAdvisoryLockID).
 		WillReturnError(errors.New("lock failed"))
@@ -253,7 +257,7 @@ func TestApplyMigrationsFS_ChecksumMismatchRejected(t *testing.T) {
 	fsys := fstest.MapFS{
 		"001_init.sql": &fstest.MapFile{Data: []byte("CREATE TABLE t(id int);")},
 	}
-	err = applyMigrationsFS(context.Background(), db, fsys)
+	err = applyMigrationsFS(context.Background(), db, fsys, DialectPostgres)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "checksum mismatch")
 	require.NoError(t, mock.ExpectationsWereMet())
@@ -275,7 +279,7 @@ func TestApplyMigrationsFS_CheckMigrationQueryError(t *testing.T) {
 	fsys := fstest.MapFS{
 		"001_err.sql": &fstest.MapFile{Data: []byte("SELECT 1;")},
 	}
-	err = applyMigrationsFS(context.Background(), db, fsys)
+	err = applyMigrationsFS(context.Background(), db, fsys, DialectPostgres)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "check migration 001_err.sql")
 	require.NoError(t, mock.ExpectationsWereMet())
@@ -301,7 +305,7 @@ func TestApplyMigrationsFS_SkipEmptyAndAlreadyApplied(t *testing.T) {
 		"000_empty.sql":   &fstest.MapFile{Data: []byte("   \n\t ")},
 		"001_already.sql": &fstest.MapFile{Data: []byte(alreadySQL)},
 	}
-	err = applyMigrationsFS(context.Background(), db, fsys)
+	err = applyMigrationsFS(context.Background(), db, fsys, DialectPostgres)
 	require.NoError(t, err)
 	require.NoError(t, mock.ExpectationsWereMet())
 }
@@ -319,7 +323,7 @@ func TestApplyMigrationsFS_ReadMigrationError(t *testing.T) {
 	fsys := fstest.MapFS{
 		"001_bad.sql": &fstest.MapFile{Mode: fs.ModeDir},
 	}
-	err = applyMigrationsFS(context.Background(), db, fsys)
+	err = applyMigrationsFS(context.Background(), db, fsys, DialectPostgres)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "read migration 001_bad.sql")
 	require.NoError(t, mock.ExpectationsWereMet())

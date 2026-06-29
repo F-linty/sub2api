@@ -18,6 +18,7 @@ import (
 	"github.com/Wei-Shaw/sub2api/ent/identityadoptiondecision"
 	"github.com/Wei-Shaw/sub2api/ent/pendingauthsession"
 	dbpredicate "github.com/Wei-Shaw/sub2api/ent/predicate"
+	"github.com/Wei-Shaw/sub2api/internal/pkg/dbdialect"
 	infraerrors "github.com/Wei-Shaw/sub2api/internal/pkg/errors"
 
 	entsql "entgo.io/ent/dialect/sql"
@@ -172,7 +173,9 @@ func authPendingIdentityAdvisoryLockHash(key string) int64 {
 func lockAuthPendingIdentityKeys(ctx context.Context, client *dbent.Client, keys ...string) (func(), error) {
 	release := authPendingIdentityScopedKeyLocks.lock(keys...)
 	normalized := normalizeAuthPendingIdentityLockKeys(keys...)
-	if len(normalized) == 0 || client == nil || client.Driver().Dialect() != dialect.Postgres {
+	// CockroachDB uses the Postgres ent dialect but does NOT implement advisory locks,
+	// so skip the DB lock and rely on the in-process mutex plus CRDB SERIALIZABLE isolation.
+	if len(normalized) == 0 || client == nil || client.Driver().Dialect() != dialect.Postgres || dbdialect.IsCockroach() {
 		return release, nil
 	}
 

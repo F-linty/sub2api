@@ -13,6 +13,7 @@ import (
 )
 
 func TestAuthIdentityCompatBackfillMigration_AllowsLongReportTypes(t *testing.T) {
+	skipOnCockroach(t, "replays PostgreSQL migration SQL; CRDB uses cockroach/ overlays")
 	tx := testTx(t)
 	ctx := context.Background()
 

@@ -75,7 +75,7 @@ func TestApplyMigrationsFS_NonTransactionalMigration(t *testing.T) {
 		},
 	}
 
-	err = applyMigrationsFS(context.Background(), db, fsys)
+	err = applyMigrationsFS(context.Background(), db, fsys, DialectPostgres)
 	require.NoError(t, err)
 	require.NoError(t, mock.ExpectationsWereMet())
 }
@@ -111,7 +111,7 @@ CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_t_b ON t(b);
 		},
 	}
 
-	err = applyMigrationsFS(context.Background(), db, fsys)
+	err = applyMigrationsFS(context.Background(), db, fsys, DialectPostgres)
 	require.NoError(t, err)
 	require.NoError(t, mock.ExpectationsWereMet())
 }
@@ -143,7 +143,7 @@ DROP INDEX CONCURRENTLY IF EXISTS paymentorder_out_trade_no;
 		},
 	}
 
-	err = applyMigrationsFS(context.Background(), db, fsys)
+	err = applyMigrationsFS(context.Background(), db, fsys, DialectPostgres)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "duplicate out_trade_no")
 	require.Contains(t, err.Error(), "dup-out-trade-no")
@@ -189,7 +189,7 @@ DROP INDEX CONCURRENTLY IF EXISTS paymentorder_out_trade_no;
 		},
 	}
 
-	err = applyMigrationsFS(context.Background(), db, fsys)
+	err = applyMigrationsFS(context.Background(), db, fsys, DialectPostgres)
 	require.NoError(t, err)
 	require.NoError(t, mock.ExpectationsWereMet())
 }
@@ -227,7 +227,7 @@ CREATE UNIQUE INDEX CONCURRENTLY IF NOT EXISTS idx_scheduler_outbox_pending_dedu
 		},
 	}
 
-	err = applyMigrationsFS(context.Background(), db, fsys)
+	err = applyMigrationsFS(context.Background(), db, fsys, DialectPostgres)
 	require.NoError(t, err)
 	require.NoError(t, mock.ExpectationsWereMet())
 }
@@ -258,7 +258,7 @@ func TestApplyMigrationsFS_TransactionalMigration(t *testing.T) {
 		},
 	}
 
-	err = applyMigrationsFS(context.Background(), db, fsys)
+	err = applyMigrationsFS(context.Background(), db, fsys, DialectPostgres)
 	require.NoError(t, err)
 	require.NoError(t, mock.ExpectationsWereMet())
 }

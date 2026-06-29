@@ -25,6 +25,13 @@ func (s *GatewayRoutingSuite) SetupTest() {
 	tx := testEntTx(s.T())
 	s.client = tx.Client()
 	s.accountRepo = newAccountRepositoryWithSQL(s.client, tx, nil)
+	// These tests assert exact schedulable-account counts, but earlier suites commit
+	// accounts (via the non-transactional client) that would otherwise pollute the
+	// results. Clear the table inside this rolled-back transaction so each test sees
+	// only the accounts it creates. (Surfaced on CockroachDB, where the committed set
+	// differs; the isolation fix is engine-agnostic.)
+	_, err := s.client.Account.Delete().Exec(s.ctx)
+	s.Require().NoError(err)
 }
 
 func TestGatewayRoutingSuite(t *testing.T) {

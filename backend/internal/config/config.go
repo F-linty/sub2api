@@ -1117,6 +1117,17 @@ type DatabaseConfig struct {
 	Password string `mapstructure:"password"`
 	DBName   string `mapstructure:"dbname"`
 	SSLMode  string `mapstructure:"sslmode"`
+	// Driver 选择目标数据库引擎方言："postgres"（默认）或 "cockroach"。
+	// 二者共用 lib/pq 驱动与 ent 的 dialect.Postgres SQL 生成，仅在迁移锁、
+	// 部分 DDL（CONCURRENTLY/BRIN/分区/advisory lock）上存在差异。
+	// 留空时按 postgres 处理；启动时会用 SELECT version() 自动纠正为实际引擎。
+	Driver string `mapstructure:"driver"`
+	// CockroachReadCommitted: 在 CockroachDB 上将数据库默认事务隔离级别设为
+	// READ COMMITTED（与 PostgreSQL 默认一致）。本项目按 PG READ COMMITTED 语义
+	// 设计且未做 40001 序列化重试，CRDB 默认的 SERIALIZABLE 会在高并发写路径
+	// （usage_logs/quota 等）上抛出 40001 而导致请求失败。默认 true，仅在你确知
+	// 需要 SERIALIZABLE 且已自行处理重试时才设为 false。仅 driver=cockroach 时生效。
+	CockroachReadCommitted bool `mapstructure:"cockroach_read_committed"`
 	// 连接池配置（性能优化：可配置化连接池参数）
 	// MaxOpenConns: 最大打开连接数，控制数据库连接上限，防止资源耗尽
 	MaxOpenConns int `mapstructure:"max_open_conns"`
@@ -1133,6 +1144,27 @@ type DatabaseConfig struct {
 	// UserPlatformQuotaFlushBatchSize: flusher 单批最大条数
 	// 建议 ≤ 6000（单条 UPSERT 原子上限）
 	UserPlatformQuotaFlushBatchSize int `mapstructure:"user_platform_quota_flush_batch_size"`
+}
+
+// 支持的数据库方言标识。
+const (
+	DBDriverPostgres  = "postgres"
+	DBDriverCockroach = "cockroach"
+)
+
+// DriverName 返回归一化后的数据库方言标识（小写、去空格）。
+// 空值按 postgres 处理，保证既有部署的零配置升级行为不变。
+func (d *DatabaseConfig) DriverName() string {
+	name := strings.ToLower(strings.TrimSpace(d.Driver))
+	if name == "" {
+		return DBDriverPostgres
+	}
+	return name
+}
+
+// IsCockroach 报告当前配置是否以 CockroachDB 方言运行。
+func (d *DatabaseConfig) IsCockroach() bool {
+	return d.DriverName() == DBDriverCockroach
 }
 
 func (d *DatabaseConfig) DSN() string {
@@ -1706,6 +1738,8 @@ func setDefaults() {
 	viper.SetDefault("database.password", "postgres")
 	viper.SetDefault("database.dbname", "sub2api")
 	viper.SetDefault("database.sslmode", "prefer")
+	viper.SetDefault("database.driver", "postgres")
+	viper.SetDefault("database.cockroach_read_committed", true)
 	viper.SetDefault("database.max_open_conns", 256)
 	viper.SetDefault("database.max_idle_conns", 128)
 	viper.SetDefault("database.conn_max_lifetime_minutes", 30)
@@ -2287,6 +2321,11 @@ func (c *Config) Validate() error {
 	}
 	if c.Billing.MinimumBalanceReserve < 0 {
 		return fmt.Errorf("billing.minimum_balance_reserve must be non-negative")
+	}
+	switch c.Database.DriverName() {
+	case DBDriverPostgres, DBDriverCockroach:
+	default:
+		return fmt.Errorf("database.driver must be one of %q or %q, got %q", DBDriverPostgres, DBDriverCockroach, c.Database.Driver)
 	}
 	if c.Database.MaxOpenConns <= 0 {
 		return fmt.Errorf("database.max_open_conns must be positive")

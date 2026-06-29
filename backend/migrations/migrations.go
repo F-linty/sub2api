@@ -32,3 +32,16 @@ import "embed"
 //
 //go:embed *.sql
 var FS embed.FS
+
+// CockroachFS 包含 CockroachDB 方言的迁移覆盖文件（位于 cockroach/ 子目录）。
+//
+// 仅当 database.driver = cockroach 时启用：对存在同名覆盖文件的迁移，运行器会用
+// 覆盖内容替换顶层 PostgreSQL 版本（schema_migrations 仍以原文件名记录）。
+// PostgreSQL 部署完全不受影响——顶层 *.sql 保持字节不变，checksum 不变。
+//
+// 覆盖文件须满足：
+//   - 不含 DO/PL-pgSQL 块（CRDB 不支持在其中执行 DDL）
+//   - 语句以分号分隔且字符串字面量内不含分号（运行器按分号逐句 autocommit 执行）
+//
+//go:embed cockroach/*.sql
+var CockroachFS embed.FS

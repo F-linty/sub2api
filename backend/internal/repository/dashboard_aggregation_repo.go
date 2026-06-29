@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Wei-Shaw/sub2api/internal/pkg/dbdialect"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/timezone"
 	"github.com/Wei-Shaw/sub2api/internal/service"
 	"github.com/lib/pq"
@@ -220,13 +221,13 @@ func (r *dashboardAggregationRepository) CleanupUsageLogs(ctx context.Context, c
 	for {
 		res, err := r.sql.ExecContext(ctx, `
 			WITH victims AS (
-				SELECT ctid
+				SELECT id
 				FROM usage_logs
 				WHERE created_at < $1
 				LIMIT $2
 			)
 			DELETE FROM usage_logs
-			WHERE ctid IN (SELECT ctid FROM victims)
+			WHERE id IN (SELECT id FROM victims)
 		`, cutoff.UTC(), usageLogsCleanupBatchSize)
 		if err != nil {
 			return err
@@ -245,7 +246,7 @@ func (r *dashboardAggregationRepository) CleanupUsageBillingDedup(ctx context.Co
 	for {
 		res, err := r.sql.ExecContext(ctx, `
 			WITH victims AS (
-				SELECT ctid, request_id, api_key_id, request_fingerprint, created_at
+				SELECT id, request_id, api_key_id, request_fingerprint, created_at
 				FROM usage_billing_dedup
 				WHERE created_at < $1
 				LIMIT $2
@@ -254,9 +255,10 @@ func (r *dashboardAggregationRepository) CleanupUsageBillingDedup(ctx context.Co
 				SELECT request_id, api_key_id, request_fingerprint, created_at
 				FROM victims
 				ON CONFLICT (request_id, api_key_id) DO NOTHING
+				RETURNING request_id
 			)
 			DELETE FROM usage_billing_dedup
-			WHERE ctid IN (SELECT ctid FROM victims)
+			WHERE id IN (SELECT id FROM victims)
 		`, cutoff.UTC(), usageBillingDedupCleanupBatchSize)
 		if err != nil {
 			return err
@@ -463,6 +465,12 @@ func (r *dashboardAggregationRepository) upsertDailyAggregates(ctx context.Conte
 }
 
 func (r *dashboardAggregationRepository) isUsageLogsPartitioned(ctx context.Context) (bool, error) {
+	// CockroachDB has no PostgreSQL declarative partitioning (and no pg_partitioned_table
+	// catalog), so usage_logs is never partitioned there. Short-circuit to avoid the
+	// PG-only catalog query, which would error on CRDB.
+	if dbdialect.IsCockroach() {
+		return false, nil
+	}
 	query := `
 		SELECT EXISTS(
 			SELECT 1

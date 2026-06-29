@@ -3,8 +3,11 @@ package service
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"hash/fnv"
 	"time"
+
+	"github.com/Wei-Shaw/sub2api/internal/pkg/dbdialect"
 )
 
 func hashAdvisoryLockID(key string) int64 {
@@ -19,6 +22,12 @@ func tryAcquireDBAdvisoryLock(ctx context.Context, db *sql.DB, lockID int64) (fu
 	}
 	if ctx == nil {
 		ctx = context.Background()
+	}
+
+	// CockroachDB exposes pg_try_advisory_lock only as a no-op stub (no real mutual
+	// exclusion), so use the keyed TTL lease table instead for genuine cross-instance gating.
+	if dbdialect.IsCockroach() {
+		return TryAcquireDBLeaseLock(ctx, db, fmt.Sprintf("advisory:%d", lockID))
 	}
 
 	conn, err := db.Conn(ctx)

@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/Wei-Shaw/sub2api/internal/pkg/dbdialect"
 	"github.com/Wei-Shaw/sub2api/internal/service"
 )
 
@@ -132,6 +133,16 @@ func (r *schedulerOutboxRepository) DeleteConsumedUpTo(ctx context.Context, wate
 }
 
 func (r *schedulerOutboxRepository) TryAcquireCleanupLock(ctx context.Context) (service.SchedulerOutboxCleanupLease, bool, error) {
+	// CockroachDB lacks both hashtext() and real session advisory locks, so use the
+	// keyed TTL lease instead of pg_try_advisory_lock(hashtext(...)).
+	if dbdialect.IsCockroach() {
+		release, ok := service.TryAcquireDBLeaseLock(ctx, r.db, "scheduler_outbox_cleanup")
+		if !ok {
+			return nil, false, nil
+		}
+		return &schedulerOutboxFuncLease{release: release}, true, nil
+	}
+
 	conn, err := r.db.Conn(ctx)
 	if err != nil {
 		return nil, false, err
@@ -147,6 +158,18 @@ func (r *schedulerOutboxRepository) TryAcquireCleanupLock(ctx context.Context) (
 		return nil, false, nil
 	}
 	return &schedulerOutboxCleanupLease{conn: conn}, true, nil
+}
+
+// schedulerOutboxFuncLease adapts a release func (CockroachDB lease lock) to the
+// SchedulerOutboxCleanupLease interface.
+type schedulerOutboxFuncLease struct {
+	release func()
+}
+
+func (l *schedulerOutboxFuncLease) Release() {
+	if l != nil && l.release != nil {
+		l.release()
+	}
 }
 
 func (l *schedulerOutboxCleanupLease) Release() {

@@ -11,6 +11,7 @@ import (
 )
 
 func TestMigrationsRunner_IsIdempotent_AndSchemaIsUpToDate(t *testing.T) {
+	skipOnCockroach(t, "schema snapshot is PostgreSQL-specific; CRDB schema differs via overlays")
 	tx := testTx(t)
 
 	// Re-apply migrations to verify idempotency (no errors, no duplicate rows).
@@ -126,6 +127,7 @@ func TestMigrationsRunner_IsIdempotent_AndSchemaIsUpToDate(t *testing.T) {
 }
 
 func TestMigrationsRunner_AuthIdentityAndPaymentSchemaStayAligned(t *testing.T) {
+	skipOnCockroach(t, "schema snapshot is PostgreSQL-specific; CRDB schema differs via overlays")
 	tx := testTx(t)
 
 	requireColumn(t, tx, "auth_identity_migration_reports", "report_type", "character varying", 80, false)

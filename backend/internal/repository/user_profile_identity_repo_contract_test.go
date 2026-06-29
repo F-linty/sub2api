@@ -32,7 +32,7 @@ func (s *UserProfileIdentityRepoSuite) SetupTest() {
 	s.client = testEntClient(s.T())
 	s.repo = newUserRepositoryWithSQL(s.client, integrationDB)
 
-	_, err := integrationDB.ExecContext(s.ctx, `
+	_, err := execTruncate(s.ctx, integrationDB, `
 TRUNCATE TABLE
 	identity_adoption_decisions,
 	auth_identity_channels,

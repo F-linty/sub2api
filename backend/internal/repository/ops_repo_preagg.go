@@ -4,8 +4,43 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"strings"
 	"time"
+
+	"github.com/Wei-Shaw/sub2api/internal/pkg/dbdialect"
 )
+
+// execPreaggUpsert runs a pre-aggregation upsert. On PostgreSQL it executes the query
+// as-is (INSERT ... ON CONFLICT (expr) DO UPDATE). CockroachDB does not accept
+// expression-based ON CONFLICT targets (COALESCE(platform,”), ...), so there it strips
+// the ON CONFLICT clause and runs a windowed DELETE + plain INSERT in one transaction.
+// This is equivalent because the SELECT source is already grouped/deduplicated per
+// dimension, so the windowed delete-and-replace yields the same rows as the upsert.
+func (r *opsRepository) execPreaggUpsert(ctx context.Context, q, deleteSQL string, start, end time.Time) error {
+	if !dbdialect.IsCockroach() {
+		_, err := r.db.ExecContext(ctx, q, start, end)
+		return err
+	}
+
+	insertOnly := q
+	if i := strings.Index(q, "ON CONFLICT"); i >= 0 {
+		insertOnly = q[:i]
+	}
+
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	if _, err := tx.ExecContext(ctx, deleteSQL, start, end); err != nil {
+		_ = tx.Rollback()
+		return err
+	}
+	if _, err := tx.ExecContext(ctx, insertOnly, start, end); err != nil {
+		_ = tx.Rollback()
+		return err
+	}
+	return tx.Commit()
+}
 
 func (r *opsRepository) UpsertHourlyMetrics(ctx context.Context, startTime, endTime time.Time) error {
 	if r == nil || r.db == nil {
@@ -20,13 +55,15 @@ func (r *opsRepository) UpsertHourlyMetrics(ctx context.Context, startTime, endT
 
 	// NOTE:
 	// - We aggregate usage_logs + ops_error_logs into ops_metrics_hourly.
-	// - We emit three dimension granularities via GROUPING SETS:
+	// - We emit three dimension granularities, each as a UNION ALL'd GROUP BY level
+	//   (CockroachDB does not support GROUPING SETS; the union is equivalent on Postgres):
 	//   1) overall: (bucket_start)
 	//   2) platform: (bucket_start, platform)
 	//   3) group: (bucket_start, platform, group_id)
 	//
 	// IMPORTANT: Postgres UNIQUE treats NULLs as distinct, so the table uses a COALESCE-based
-	// unique index; our ON CONFLICT target must match that expression set.
+	// unique index; the Postgres ON CONFLICT target matches that expression set, while the
+	// CockroachDB path (see execPreaggUpsert) uses a windowed DELETE + INSERT instead.
 	q := `
 WITH usage_base AS (
   SELECT
@@ -41,33 +78,66 @@ WITH usage_base AS (
   WHERE ul.created_at >= $1 AND ul.created_at < $2
 ),
 usage_agg AS (
+  -- Three dimension granularities (overall / platform / platform+group). CockroachDB
+  -- does not implement GROUPING SETS or GROUPING(), so we UNION ALL the three GROUP BY
+  -- levels (equivalent result set on PostgreSQL too) and use literal NULL markers in
+  -- place of GROUPING() to flag the rolled-up dimensions.
   SELECT
-    bucket_start,
-    CASE WHEN GROUPING(platform) = 1 THEN NULL ELSE platform END AS platform,
-    CASE WHEN GROUPING(group_id) = 1 THEN NULL ELSE group_id END AS group_id,
+    bucket_start, NULL::text AS platform, NULL::bigint AS group_id,
     COUNT(*) AS success_count,
     COUNT(*) FILTER (WHERE first_token_ms IS NOT NULL) AS ttft_sample_count,
     COALESCE(SUM(tokens), 0) AS token_consumed,
-
-    percentile_cont(0.50) WITHIN GROUP (ORDER BY duration_ms) FILTER (WHERE duration_ms IS NOT NULL) AS duration_p50_ms,
-    percentile_cont(0.90) WITHIN GROUP (ORDER BY duration_ms) FILTER (WHERE duration_ms IS NOT NULL) AS duration_p90_ms,
-    percentile_cont(0.95) WITHIN GROUP (ORDER BY duration_ms) FILTER (WHERE duration_ms IS NOT NULL) AS duration_p95_ms,
-    percentile_cont(0.99) WITHIN GROUP (ORDER BY duration_ms) FILTER (WHERE duration_ms IS NOT NULL) AS duration_p99_ms,
+    percentile_cont(0.50) WITHIN GROUP (ORDER BY duration_ms::float8) AS duration_p50_ms,
+    percentile_cont(0.90) WITHIN GROUP (ORDER BY duration_ms::float8) AS duration_p90_ms,
+    percentile_cont(0.95) WITHIN GROUP (ORDER BY duration_ms::float8) AS duration_p95_ms,
+    percentile_cont(0.99) WITHIN GROUP (ORDER BY duration_ms::float8) AS duration_p99_ms,
     AVG(duration_ms) FILTER (WHERE duration_ms IS NOT NULL) AS duration_avg_ms,
     MAX(duration_ms) AS duration_max_ms,
-
-    percentile_cont(0.50) WITHIN GROUP (ORDER BY first_token_ms) FILTER (WHERE first_token_ms IS NOT NULL) AS ttft_p50_ms,
-    percentile_cont(0.90) WITHIN GROUP (ORDER BY first_token_ms) FILTER (WHERE first_token_ms IS NOT NULL) AS ttft_p90_ms,
-    percentile_cont(0.95) WITHIN GROUP (ORDER BY first_token_ms) FILTER (WHERE first_token_ms IS NOT NULL) AS ttft_p95_ms,
-    percentile_cont(0.99) WITHIN GROUP (ORDER BY first_token_ms) FILTER (WHERE first_token_ms IS NOT NULL) AS ttft_p99_ms,
+    percentile_cont(0.50) WITHIN GROUP (ORDER BY first_token_ms::float8) AS ttft_p50_ms,
+    percentile_cont(0.90) WITHIN GROUP (ORDER BY first_token_ms::float8) AS ttft_p90_ms,
+    percentile_cont(0.95) WITHIN GROUP (ORDER BY first_token_ms::float8) AS ttft_p95_ms,
+    percentile_cont(0.99) WITHIN GROUP (ORDER BY first_token_ms::float8) AS ttft_p99_ms,
     AVG(first_token_ms) FILTER (WHERE first_token_ms IS NOT NULL) AS ttft_avg_ms,
     MAX(first_token_ms) AS ttft_max_ms
-  FROM usage_base
-  GROUP BY GROUPING SETS (
-    (bucket_start),
-    (bucket_start, platform),
-    (bucket_start, platform, group_id)
-  )
+  FROM usage_base GROUP BY bucket_start
+  UNION ALL
+  SELECT
+    bucket_start, platform, NULL::bigint AS group_id,
+    COUNT(*) AS success_count,
+    COUNT(*) FILTER (WHERE first_token_ms IS NOT NULL) AS ttft_sample_count,
+    COALESCE(SUM(tokens), 0) AS token_consumed,
+    percentile_cont(0.50) WITHIN GROUP (ORDER BY duration_ms::float8) AS duration_p50_ms,
+    percentile_cont(0.90) WITHIN GROUP (ORDER BY duration_ms::float8) AS duration_p90_ms,
+    percentile_cont(0.95) WITHIN GROUP (ORDER BY duration_ms::float8) AS duration_p95_ms,
+    percentile_cont(0.99) WITHIN GROUP (ORDER BY duration_ms::float8) AS duration_p99_ms,
+    AVG(duration_ms) FILTER (WHERE duration_ms IS NOT NULL) AS duration_avg_ms,
+    MAX(duration_ms) AS duration_max_ms,
+    percentile_cont(0.50) WITHIN GROUP (ORDER BY first_token_ms::float8) AS ttft_p50_ms,
+    percentile_cont(0.90) WITHIN GROUP (ORDER BY first_token_ms::float8) AS ttft_p90_ms,
+    percentile_cont(0.95) WITHIN GROUP (ORDER BY first_token_ms::float8) AS ttft_p95_ms,
+    percentile_cont(0.99) WITHIN GROUP (ORDER BY first_token_ms::float8) AS ttft_p99_ms,
+    AVG(first_token_ms) FILTER (WHERE first_token_ms IS NOT NULL) AS ttft_avg_ms,
+    MAX(first_token_ms) AS ttft_max_ms
+  FROM usage_base GROUP BY bucket_start, platform
+  UNION ALL
+  SELECT
+    bucket_start, platform, group_id,
+    COUNT(*) AS success_count,
+    COUNT(*) FILTER (WHERE first_token_ms IS NOT NULL) AS ttft_sample_count,
+    COALESCE(SUM(tokens), 0) AS token_consumed,
+    percentile_cont(0.50) WITHIN GROUP (ORDER BY duration_ms::float8) AS duration_p50_ms,
+    percentile_cont(0.90) WITHIN GROUP (ORDER BY duration_ms::float8) AS duration_p90_ms,
+    percentile_cont(0.95) WITHIN GROUP (ORDER BY duration_ms::float8) AS duration_p95_ms,
+    percentile_cont(0.99) WITHIN GROUP (ORDER BY duration_ms::float8) AS duration_p99_ms,
+    AVG(duration_ms) FILTER (WHERE duration_ms IS NOT NULL) AS duration_avg_ms,
+    MAX(duration_ms) AS duration_max_ms,
+    percentile_cont(0.50) WITHIN GROUP (ORDER BY first_token_ms::float8) AS ttft_p50_ms,
+    percentile_cont(0.90) WITHIN GROUP (ORDER BY first_token_ms::float8) AS ttft_p90_ms,
+    percentile_cont(0.95) WITHIN GROUP (ORDER BY first_token_ms::float8) AS ttft_p95_ms,
+    percentile_cont(0.99) WITHIN GROUP (ORDER BY first_token_ms::float8) AS ttft_p99_ms,
+    AVG(first_token_ms) FILTER (WHERE first_token_ms IS NOT NULL) AS ttft_avg_ms,
+    MAX(first_token_ms) AS ttft_max_ms
+  FROM usage_base GROUP BY bucket_start, platform, group_id
 ),
 error_base AS (
   SELECT
@@ -86,23 +156,39 @@ error_base AS (
     AND is_count_tokens = FALSE
 ),
 error_agg AS (
+  -- UNION ALL of the three GROUP BY levels (CockroachDB has no GROUPING SETS). The
+  -- original HAVING (GROUPING(group_id)=1 OR group_id IS NOT NULL) keeps the rolled-up
+  -- levels and, at the finest level, only rows with a real group_id -> WHERE group_id
+  -- IS NOT NULL on that level.
   SELECT
-    bucket_start,
-    CASE WHEN GROUPING(platform) = 1 THEN NULL ELSE platform END AS platform,
-    CASE WHEN GROUPING(group_id) = 1 THEN NULL ELSE group_id END AS group_id,
+    bucket_start, NULL::text AS platform, NULL::bigint AS group_id,
     COUNT(*) FILTER (WHERE COALESCE(client_status_code, 0) >= 400) AS error_count_total,
     COUNT(*) FILTER (WHERE COALESCE(client_status_code, 0) >= 400 AND is_business_limited) AS business_limited_count,
     COUNT(*) FILTER (WHERE COALESCE(client_status_code, 0) >= 400 AND NOT is_business_limited) AS error_count_sla,
     COUNT(*) FILTER (WHERE error_owner = 'provider' AND NOT is_business_limited AND COALESCE(effective_status_code, 0) NOT IN (429, 529)) AS upstream_error_count_excl_429_529,
     COUNT(*) FILTER (WHERE error_owner = 'provider' AND NOT is_business_limited AND COALESCE(effective_status_code, 0) = 429) AS upstream_429_count,
     COUNT(*) FILTER (WHERE error_owner = 'provider' AND NOT is_business_limited AND COALESCE(effective_status_code, 0) = 529) AS upstream_529_count
-  FROM error_base
-  GROUP BY GROUPING SETS (
-    (bucket_start),
-    (bucket_start, platform),
-    (bucket_start, platform, group_id)
-  )
-  HAVING GROUPING(group_id) = 1 OR group_id IS NOT NULL
+  FROM error_base GROUP BY bucket_start
+  UNION ALL
+  SELECT
+    bucket_start, platform, NULL::bigint AS group_id,
+    COUNT(*) FILTER (WHERE COALESCE(client_status_code, 0) >= 400) AS error_count_total,
+    COUNT(*) FILTER (WHERE COALESCE(client_status_code, 0) >= 400 AND is_business_limited) AS business_limited_count,
+    COUNT(*) FILTER (WHERE COALESCE(client_status_code, 0) >= 400 AND NOT is_business_limited) AS error_count_sla,
+    COUNT(*) FILTER (WHERE error_owner = 'provider' AND NOT is_business_limited AND COALESCE(effective_status_code, 0) NOT IN (429, 529)) AS upstream_error_count_excl_429_529,
+    COUNT(*) FILTER (WHERE error_owner = 'provider' AND NOT is_business_limited AND COALESCE(effective_status_code, 0) = 429) AS upstream_429_count,
+    COUNT(*) FILTER (WHERE error_owner = 'provider' AND NOT is_business_limited AND COALESCE(effective_status_code, 0) = 529) AS upstream_529_count
+  FROM error_base GROUP BY bucket_start, platform
+  UNION ALL
+  SELECT
+    bucket_start, platform, group_id,
+    COUNT(*) FILTER (WHERE COALESCE(client_status_code, 0) >= 400) AS error_count_total,
+    COUNT(*) FILTER (WHERE COALESCE(client_status_code, 0) >= 400 AND is_business_limited) AS business_limited_count,
+    COUNT(*) FILTER (WHERE COALESCE(client_status_code, 0) >= 400 AND NOT is_business_limited) AS error_count_sla,
+    COUNT(*) FILTER (WHERE error_owner = 'provider' AND NOT is_business_limited AND COALESCE(effective_status_code, 0) NOT IN (429, 529)) AS upstream_error_count_excl_429_529,
+    COUNT(*) FILTER (WHERE error_owner = 'provider' AND NOT is_business_limited AND COALESCE(effective_status_code, 0) = 429) AS upstream_429_count,
+    COUNT(*) FILTER (WHERE error_owner = 'provider' AND NOT is_business_limited AND COALESCE(effective_status_code, 0) = 529) AS upstream_529_count
+  FROM error_base WHERE group_id IS NOT NULL GROUP BY bucket_start, platform, group_id
 ),
 combined AS (
   SELECT
@@ -224,8 +310,9 @@ ON CONFLICT (bucket_start, COALESCE(platform, ''), COALESCE(group_id, 0)) DO UPD
   computed_at = NOW()
 `
 
-	_, err := r.db.ExecContext(ctx, q, start, end)
-	return err
+	return r.execPreaggUpsert(ctx, q,
+		`DELETE FROM ops_metrics_hourly WHERE bucket_start >= $1 AND bucket_start < $2`,
+		start, end)
 }
 
 func (r *opsRepository) UpsertDailyMetrics(ctx context.Context, startTime, endTime time.Time) error {
@@ -283,26 +370,26 @@ SELECT
   COALESCE(SUM(token_consumed), 0) AS token_consumed,
 
   -- Approximation: weighted average for p50/p90, max for p95/p99 (conservative tail).
-  ROUND(SUM(duration_p50_ms::double precision * success_count) FILTER (WHERE duration_p50_ms IS NOT NULL)
-    / NULLIF(SUM(success_count) FILTER (WHERE duration_p50_ms IS NOT NULL), 0))::int AS duration_p50_ms,
-  ROUND(SUM(duration_p90_ms::double precision * success_count) FILTER (WHERE duration_p90_ms IS NOT NULL)
-    / NULLIF(SUM(success_count) FILTER (WHERE duration_p90_ms IS NOT NULL), 0))::int AS duration_p90_ms,
+  ROUND(SUM(duration_p50_ms::double precision * success_count::float8) FILTER (WHERE duration_p50_ms IS NOT NULL)
+    / NULLIF(SUM(success_count) FILTER (WHERE duration_p50_ms IS NOT NULL), 0)::float8)::int AS duration_p50_ms,
+  ROUND(SUM(duration_p90_ms::double precision * success_count::float8) FILTER (WHERE duration_p90_ms IS NOT NULL)
+    / NULLIF(SUM(success_count) FILTER (WHERE duration_p90_ms IS NOT NULL), 0)::float8)::int AS duration_p90_ms,
   MAX(duration_p95_ms) AS duration_p95_ms,
   MAX(duration_p99_ms) AS duration_p99_ms,
-  SUM(duration_avg_ms * success_count) FILTER (WHERE duration_avg_ms IS NOT NULL)
-    / NULLIF(SUM(success_count) FILTER (WHERE duration_avg_ms IS NOT NULL), 0) AS duration_avg_ms,
+  SUM(duration_avg_ms * success_count::float8) FILTER (WHERE duration_avg_ms IS NOT NULL)
+    / NULLIF(SUM(success_count) FILTER (WHERE duration_avg_ms IS NOT NULL), 0)::float8 AS duration_avg_ms,
   MAX(duration_max_ms) AS duration_max_ms,
 
   -- TTFT is weighted by ttft_sample_count (streaming rows only), NOT success_count,
   -- because first_token_ms is recorded only for streaming requests.
-  ROUND(SUM(ttft_p50_ms::double precision * ttft_sample_count) FILTER (WHERE ttft_p50_ms IS NOT NULL)
-    / NULLIF(SUM(ttft_sample_count) FILTER (WHERE ttft_p50_ms IS NOT NULL), 0))::int AS ttft_p50_ms,
-  ROUND(SUM(ttft_p90_ms::double precision * ttft_sample_count) FILTER (WHERE ttft_p90_ms IS NOT NULL)
-    / NULLIF(SUM(ttft_sample_count) FILTER (WHERE ttft_p90_ms IS NOT NULL), 0))::int AS ttft_p90_ms,
+  ROUND(SUM(ttft_p50_ms::double precision * ttft_sample_count::float8) FILTER (WHERE ttft_p50_ms IS NOT NULL)
+    / NULLIF(SUM(ttft_sample_count) FILTER (WHERE ttft_p50_ms IS NOT NULL), 0)::float8)::int AS ttft_p50_ms,
+  ROUND(SUM(ttft_p90_ms::double precision * ttft_sample_count::float8) FILTER (WHERE ttft_p90_ms IS NOT NULL)
+    / NULLIF(SUM(ttft_sample_count) FILTER (WHERE ttft_p90_ms IS NOT NULL), 0)::float8)::int AS ttft_p90_ms,
   MAX(ttft_p95_ms) AS ttft_p95_ms,
   MAX(ttft_p99_ms) AS ttft_p99_ms,
-  SUM(ttft_avg_ms * ttft_sample_count) FILTER (WHERE ttft_avg_ms IS NOT NULL)
-    / NULLIF(SUM(ttft_sample_count) FILTER (WHERE ttft_avg_ms IS NOT NULL), 0) AS ttft_avg_ms,
+  SUM(ttft_avg_ms * ttft_sample_count::float8) FILTER (WHERE ttft_avg_ms IS NOT NULL)
+    / NULLIF(SUM(ttft_sample_count) FILTER (WHERE ttft_avg_ms IS NOT NULL), 0)::float8 AS ttft_avg_ms,
   MAX(ttft_max_ms) AS ttft_max_ms,
 
   NOW()
@@ -337,8 +424,12 @@ ON CONFLICT (bucket_date, COALESCE(platform, ''), COALESCE(group_id, 0)) DO UPDA
   computed_at = NOW()
 `
 
-	_, err := r.db.ExecContext(ctx, q, start, end)
-	return err
+	return r.execPreaggUpsert(ctx, q,
+		`DELETE FROM ops_metrics_daily WHERE bucket_date IN (
+			SELECT DISTINCT (bucket_start AT TIME ZONE 'UTC')::date
+			FROM ops_metrics_hourly WHERE bucket_start >= $1 AND bucket_start < $2
+		)`,
+		start, end)
 }
 
 func (r *opsRepository) GetLatestHourlyBucketStart(ctx context.Context) (time.Time, bool, error) {

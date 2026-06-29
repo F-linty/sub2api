@@ -1,0 +1,3 @@
+-- CockroachDB variant of 099: no-op. The PostgreSQL original is a one-time data fix for
+-- a custom menu item created by an earlier migration; on a fresh install there is no such
+-- settings row to repair.

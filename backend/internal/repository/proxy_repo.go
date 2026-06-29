@@ -287,7 +287,25 @@ func proxyListOrder(params pagination.PaginationParams) []func(*entsql.Selector)
 		field = proxy.FieldID
 	}
 
-	if sortOrder == pagination.SortOrderAsc {
+	asc := sortOrder == pagination.SortOrderAsc
+
+	if field == proxy.FieldExpiresAt {
+		// expires_at is nullable (NULL = never expires). PostgreSQL defaults ASC→NULLS
+		// LAST / DESC→NULLS FIRST, but CockroachDB defaults the opposite, so be explicit:
+		// NULL must sort last ascending (bottom) and first descending (top) on both engines.
+		if asc {
+			return []func(*entsql.Selector){
+				func(sel *entsql.Selector) { sel.OrderBy(sel.C(proxy.FieldExpiresAt) + " ASC NULLS LAST") },
+				dbent.Asc(proxy.FieldID),
+			}
+		}
+		return []func(*entsql.Selector){
+			func(sel *entsql.Selector) { sel.OrderBy(sel.C(proxy.FieldExpiresAt) + " DESC NULLS FIRST") },
+			dbent.Desc(proxy.FieldID),
+		}
+	}
+
+	if asc {
 		return []func(*entsql.Selector){dbent.Asc(field), dbent.Asc(proxy.FieldID)}
 	}
 	return []func(*entsql.Selector){dbent.Desc(field), dbent.Desc(proxy.FieldID)}

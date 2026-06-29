@@ -454,10 +454,10 @@ func (c *OpsMetricsCollector) queryUsageLatency(ctx context.Context, start, end 
 	{
 		q := `
 SELECT
-  percentile_cont(0.50) WITHIN GROUP (ORDER BY duration_ms) AS p50,
-  percentile_cont(0.90) WITHIN GROUP (ORDER BY duration_ms) AS p90,
-  percentile_cont(0.95) WITHIN GROUP (ORDER BY duration_ms) AS p95,
-  percentile_cont(0.99) WITHIN GROUP (ORDER BY duration_ms) AS p99,
+  percentile_cont(0.50) WITHIN GROUP (ORDER BY duration_ms::float8) AS p50,
+  percentile_cont(0.90) WITHIN GROUP (ORDER BY duration_ms::float8) AS p90,
+  percentile_cont(0.95) WITHIN GROUP (ORDER BY duration_ms::float8) AS p95,
+  percentile_cont(0.99) WITHIN GROUP (ORDER BY duration_ms::float8) AS p99,
   AVG(duration_ms) AS avg_ms,
   MAX(duration_ms) AS max_ms
 FROM usage_logs
@@ -487,10 +487,10 @@ WHERE created_at >= $1 AND created_at < $2
 	{
 		q := `
 SELECT
-  percentile_cont(0.50) WITHIN GROUP (ORDER BY first_token_ms) AS p50,
-  percentile_cont(0.90) WITHIN GROUP (ORDER BY first_token_ms) AS p90,
-  percentile_cont(0.95) WITHIN GROUP (ORDER BY first_token_ms) AS p95,
-  percentile_cont(0.99) WITHIN GROUP (ORDER BY first_token_ms) AS p99,
+  percentile_cont(0.50) WITHIN GROUP (ORDER BY first_token_ms::float8) AS p50,
+  percentile_cont(0.90) WITHIN GROUP (ORDER BY first_token_ms::float8) AS p90,
+  percentile_cont(0.95) WITHIN GROUP (ORDER BY first_token_ms::float8) AS p95,
+  percentile_cont(0.99) WITHIN GROUP (ORDER BY first_token_ms::float8) AS p99,
   AVG(first_token_ms) AS avg_ms,
   MAX(first_token_ms) AS max_ms
 FROM usage_logs

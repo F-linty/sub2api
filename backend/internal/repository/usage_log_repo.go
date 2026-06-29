@@ -2912,7 +2912,7 @@ func (r *usageLogRepository) GetBatchUserUsageStats(ctx context.Context, userIDs
 		LEFT JOIN groups g ON g.id = ul.group_id
 		LEFT JOIN accounts a ON a.id = ul.account_id
 		WHERE ul.user_id = ANY($1)
-		  AND ul.created_at >= LEAST($2, $4)
+		  AND ul.created_at >= LEAST($2::timestamptz, $4::timestamptz)
 		  AND ` + usageLogSuccessFilterUL + `
 		GROUP BY ul.user_id, ` + usageLogEffectivePlatformExpr + `
 	`
@@ -2985,7 +2985,7 @@ func (r *usageLogRepository) GetBatchAPIKeyUsageStats(ctx context.Context, apiKe
 			COALESCE(SUM(actual_cost) FILTER (WHERE created_at >= $4), 0) as today_cost
 		FROM usage_logs
 		WHERE api_key_id = ANY($1)
-		  AND created_at >= LEAST($2, $4)
+		  AND created_at >= LEAST($2::timestamptz, $4::timestamptz)
 		GROUP BY api_key_id
 	`
 	today := timezone.Today()

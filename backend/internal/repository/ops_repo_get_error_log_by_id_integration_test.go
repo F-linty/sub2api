@@ -16,7 +16,7 @@ import (
 //  2. 新列全为 NULL 的普通记录 Scan 不报错,这些字段为空/nil
 func TestGetErrorLogByID_DeletedKeyOwner(t *testing.T) {
 	ctx := context.Background()
-	_, _ = integrationDB.ExecContext(ctx, "TRUNCATE ops_error_logs RESTART IDENTITY CASCADE")
+	_, _ = execTruncate(ctx, integrationDB, "TRUNCATE ops_error_logs RESTART IDENTITY CASCADE")
 
 	repo := NewOpsRepository(integrationDB).(*opsRepository)
 

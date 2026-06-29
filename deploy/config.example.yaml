@@ -779,6 +779,17 @@ concurrency:
 # 数据库配置 (PostgreSQL)
 # =============================================================================
 database:
+  # Database driver / dialect: "postgres" (default) or "cockroach"
+  # 数据库引擎方言："postgres"（默认）或 "cockroach"
+  # CockroachDB 与 PostgreSQL 共用驱动与大部分 SQL，仅迁移锁与少量 DDL 走专用路径。
+  # 留空按 postgres 处理；启动时会用 SELECT version() 自动纠正为实际引擎。
+  driver: "postgres"
+  # CockroachDB only: run connections in READ COMMITTED isolation (matches PostgreSQL's
+  # default). Recommended true — this app has no 40001 serialization-retry logic, and
+  # CRDB's default SERIALIZABLE would abort contended writes (usage_logs/quota/...) with
+  # 40001. Set false only if you run SERIALIZABLE and handle retries yourself.
+  # 仅 CockroachDB 生效：连接使用 READ COMMITTED 隔离（与 PostgreSQL 默认一致）。
+  cockroach_read_committed: true
   # Database host address
   # 数据库主机地址
   host: "localhost"

@@ -17,6 +17,7 @@ import (
 
 	dbent "github.com/Wei-Shaw/sub2api/ent"
 	_ "github.com/Wei-Shaw/sub2api/ent/runtime"
+	"github.com/Wei-Shaw/sub2api/internal/pkg/dbdialect"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/timezone"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -50,88 +51,145 @@ func TestMain(m *testing.M) {
 		os.Exit(1)
 	}
 
-	if !dockerIsAvailable(ctx) {
-		// In CI we expect Docker to be available so integration tests should fail loudly.
-		if os.Getenv("CI") != "" {
-			log.Printf("docker is not available (CI=true); failing integration tests")
-			os.Exit(1)
+	// External-backend overrides let the suite run against an already-running DB
+	// (e.g. a local CockroachDB node) and/or Redis instead of testcontainers.
+	//   INTEGRATION_DB_DSN       - full lib/pq DSN; skips the Postgres container.
+	//   INTEGRATION_REDIS_ADDR   - host:port; skips the Redis container.
+	//   INTEGRATION_REDIS_PASSWORD - password for the external Redis (optional).
+	externalDSN := os.Getenv("INTEGRATION_DB_DSN")
+	externalRedis := os.Getenv("INTEGRATION_REDIS_ADDR")
+	externalRedisPassword := os.Getenv("INTEGRATION_REDIS_PASSWORD")
+
+	// Docker is only required for whichever backend is NOT externally provided.
+	if externalDSN == "" || externalRedis == "" {
+		if !dockerIsAvailable(ctx) {
+			if os.Getenv("CI") != "" {
+				log.Printf("docker is not available (CI=true); failing integration tests")
+				os.Exit(1)
+			}
+			log.Printf("docker is not available; skipping integration tests (start Docker, or set INTEGRATION_DB_DSN + INTEGRATION_REDIS_ADDR)")
+			os.Exit(0)
 		}
-		log.Printf("docker is not available; skipping integration tests (start Docker to enable)")
-		os.Exit(0)
 	}
 
-	postgresImage := selectDockerImage(ctx, postgresImageTag)
-	pgContainer, err := tcpostgres.Run(
-		ctx,
-		postgresImage,
-		tcpostgres.WithDatabase("sub2api_test"),
-		tcpostgres.WithUsername("postgres"),
-		tcpostgres.WithPassword("postgres"),
-		tcpostgres.BasicWaitStrategies(),
-	)
-	if err != nil {
-		log.Printf("failed to start postgres container: %v", err)
-		os.Exit(1)
+	var cleanups []func()
+	runCleanups := func() {
+		for i := len(cleanups) - 1; i >= 0; i-- {
+			cleanups[i]()
+		}
 	}
-	defer func() { _ = pgContainer.Terminate(ctx) }()
-
-	redisContainer, err := tcredis.Run(
-		ctx,
-		redisImageTag,
-	)
-	if err != nil {
-		log.Printf("failed to start redis container: %v", err)
-		os.Exit(1)
-	}
-	defer func() { _ = redisContainer.Terminate(ctx) }()
-
-	dsn, err := pgContainer.ConnectionString(ctx, "sslmode=disable", "TimeZone=UTC")
-	if err != nil {
-		log.Printf("failed to get postgres dsn: %v", err)
+	fail := func(format string, args ...any) {
+		log.Printf(format, args...)
+		runCleanups()
 		os.Exit(1)
 	}
 
+	// --- Database ---
+	dsn := externalDSN
+	if dsn == "" {
+		postgresImage := selectDockerImage(ctx, postgresImageTag)
+		pgContainer, err := tcpostgres.Run(
+			ctx,
+			postgresImage,
+			tcpostgres.WithDatabase("sub2api_test"),
+			tcpostgres.WithUsername("postgres"),
+			tcpostgres.WithPassword("postgres"),
+			tcpostgres.BasicWaitStrategies(),
+		)
+		if err != nil {
+			fail("failed to start postgres container: %v", err)
+		}
+		cleanups = append(cleanups, func() { _ = pgContainer.Terminate(ctx) })
+
+		dsn, err = pgContainer.ConnectionString(ctx, "sslmode=disable", "TimeZone=UTC")
+		if err != nil {
+			fail("failed to get postgres dsn: %v", err)
+		}
+	} else {
+		log.Printf("using external database from INTEGRATION_DB_DSN")
+	}
+
+	var err error
 	integrationDB, err = openSQLWithRetry(ctx, dsn, 30*time.Second)
 	if err != nil {
-		log.Printf("failed to open sql db: %v", err)
-		os.Exit(1)
+		fail("failed to open sql db: %v", err)
 	}
+	cleanups = append(cleanups, func() { _ = integrationDB.Close() })
+
+	// Publish the resolved dialect so runtime lock helpers take the CockroachDB path
+	// (the harness opens the DB directly and never calls repository.InitEnt).
+	dbdialect.SetCockroach(detectDialect(ctx, integrationDB).IsCockroach())
+
 	if err := ApplyMigrations(ctx, integrationDB); err != nil {
-		log.Printf("failed to apply db migrations: %v", err)
-		os.Exit(1)
+		fail("failed to apply db migrations: %v", err)
 	}
 
 	// 创建 ent client 用于集成测试
 	drv := entsql.OpenDB(dialect.Postgres, integrationDB)
 	integrationEntClient = dbent.NewClient(dbent.Driver(drv))
+	cleanups = append(cleanups, func() { _ = integrationEntClient.Close() })
 
-	redisHost, err := redisContainer.Host(ctx)
-	if err != nil {
-		log.Printf("failed to get redis host: %v", err)
-		os.Exit(1)
-	}
-	redisPort, err := redisContainer.MappedPort(ctx, "6379/tcp")
-	if err != nil {
-		log.Printf("failed to get redis port: %v", err)
-		os.Exit(1)
+	// --- Redis ---
+	redisAddr := externalRedis
+	if redisAddr == "" {
+		redisContainer, err := tcredis.Run(ctx, redisImageTag)
+		if err != nil {
+			fail("failed to start redis container: %v", err)
+		}
+		cleanups = append(cleanups, func() { _ = redisContainer.Terminate(ctx) })
+
+		redisHost, err := redisContainer.Host(ctx)
+		if err != nil {
+			fail("failed to get redis host: %v", err)
+		}
+		redisPort, err := redisContainer.MappedPort(ctx, "6379/tcp")
+		if err != nil {
+			fail("failed to get redis port: %v", err)
+		}
+		redisAddr = fmt.Sprintf("%s:%d", redisHost, redisPort.Int())
+	} else {
+		log.Printf("using external redis from INTEGRATION_REDIS_ADDR")
 	}
 
 	integrationRedis = redisclient.NewClient(&redisclient.Options{
-		Addr: fmt.Sprintf("%s:%d", redisHost, redisPort.Int()),
-		DB:   0,
+		Addr:     redisAddr,
+		Password: externalRedisPassword,
+		DB:       0,
 	})
+	cleanups = append(cleanups, func() { _ = integrationRedis.Close() })
 	if err := integrationRedis.Ping(ctx).Err(); err != nil {
-		log.Printf("failed to ping redis: %v", err)
-		os.Exit(1)
+		fail("failed to ping redis: %v", err)
 	}
 
 	code := m.Run()
 
-	_ = integrationEntClient.Close()
-	_ = integrationRedis.Close()
-	_ = integrationDB.Close()
-
+	runCleanups()
 	os.Exit(code)
+}
+
+// execTruncate runs a TRUNCATE statement, transparently dropping the RESTART IDENTITY
+// clause on CockroachDB (which has no sequences to restart and rejects the syntax).
+// PostgreSQL keeps the clause unchanged.
+func execTruncate(ctx context.Context, exec interface {
+	ExecContext(context.Context, string, ...any) (sql.Result, error)
+}, stmt string) (sql.Result, error) {
+	if dbdialect.IsCockroach() {
+		// Strip the clause regardless of surrounding whitespace (callers use both
+		// "TRUNCATE x RESTART IDENTITY" and multi-line "...\nRESTART IDENTITY").
+		stmt = strings.ReplaceAll(stmt, "RESTART IDENTITY", "")
+	}
+	return exec.ExecContext(ctx, stmt)
+}
+
+// skipOnCockroach skips a test that asserts PostgreSQL-specific migration-replay or
+// schema-snapshot behavior. On CockroachDB the equivalent logic runs through the
+// cockroach/ migration overlays (fresh-install semantics), so replaying the original
+// PostgreSQL migrations and asserting their side effects does not apply.
+func skipOnCockroach(t *testing.T, reason string) {
+	t.Helper()
+	if dbdialect.IsCockroach() {
+		t.Skipf("skipped on CockroachDB: %s", reason)
+	}
 }
 
 func dockerIsAvailable(ctx context.Context) bool {
