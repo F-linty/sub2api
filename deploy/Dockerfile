@@ -22,6 +22,10 @@ WORKDIR /app/frontend
 # Install pnpm
 RUN corepack enable && corepack prepare pnpm@latest --activate
 
+# Use faster npm registry
+RUN npm config set registry https://registry.npmmirror.com && \
+    pnpm config set registry https://registry.npmmirror.com
+
 # Install dependencies first (better caching)
 COPY frontend/package.json frontend/pnpm-lock.yaml ./
 RUN pnpm install --no-frozen-lockfile
