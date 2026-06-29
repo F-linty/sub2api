@@ -1116,7 +1116,8 @@ type DatabaseConfig struct {
 	User     string `mapstructure:"user"`
 	Password string `mapstructure:"password"`
 	DBName   string `mapstructure:"dbname"`
-	SSLMode  string `mapstructure:"sslmode"`
+	SSLMode     string `mapstructure:"sslmode"`
+	SSLRootCert string `mapstructure:"sslrootcert"` // path to CA cert file, required for sslmode=verify-full
 	// Driver 选择目标数据库引擎方言："postgres"（默认）或 "cockroach"。
 	// 二者共用 lib/pq 驱动与 ent 的 dialect.Postgres SQL 生成，仅在迁移锁、
 	// 部分 DDL（CONCURRENTLY/BRIN/分区/advisory lock）上存在差异。
@@ -1167,18 +1168,25 @@ func (d *DatabaseConfig) IsCockroach() bool {
 	return d.DriverName() == DBDriverCockroach
 }
 
+func (d *DatabaseConfig) sslRootCertParam() string {
+	if d.SSLRootCert != "" {
+		return " sslrootcert=" + d.SSLRootCert
+	}
+	return ""
+}
+
 func (d *DatabaseConfig) DSN() string {
 	// 当密码为空时不包含 password 参数，避免 libpq 解析错误
 	if d.Password == "" {
 		return fmt.Sprintf(
 			"host=%s port=%d user=%s dbname=%s sslmode=%s",
 			d.Host, d.Port, d.User, d.DBName, d.SSLMode,
-		)
+		) + d.sslRootCertParam()
 	}
 	return fmt.Sprintf(
 		"host=%s port=%d user=%s password=%s dbname=%s sslmode=%s",
 		d.Host, d.Port, d.User, d.Password, d.DBName, d.SSLMode,
-	)
+	) + d.sslRootCertParam()
 }
 
 // DSNWithTimezone returns DSN with timezone setting
@@ -1191,12 +1199,12 @@ func (d *DatabaseConfig) DSNWithTimezone(tz string) string {
 		return fmt.Sprintf(
 			"host=%s port=%d user=%s dbname=%s sslmode=%s TimeZone=%s",
 			d.Host, d.Port, d.User, d.DBName, d.SSLMode, tz,
-		)
+		) + d.sslRootCertParam()
 	}
 	return fmt.Sprintf(
 		"host=%s port=%d user=%s password=%s dbname=%s sslmode=%s TimeZone=%s",
 		d.Host, d.Port, d.User, d.Password, d.DBName, d.SSLMode, tz,
-	)
+	) + d.sslRootCertParam()
 }
 
 // RedisConfig Redis 连接配置
