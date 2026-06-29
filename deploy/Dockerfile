@@ -28,7 +28,7 @@ RUN npm config set registry https://registry.npmmirror.com && \
 
 # Install dependencies first (better caching)
 COPY frontend/package.json frontend/pnpm-lock.yaml ./
-RUN echo "fetch-timeout=600000\nfetch-retries=5" >> .npmrc && \
+RUN printf "fetch-timeout=600000\nfetch-retries=5\nfetch-retry-mintimeout=20000\nfetch-retry-maxtimeout=120000\n" > .npmrc && \
     pnpm install --frozen-lockfile=false
 
 # Copy frontend source and build.
