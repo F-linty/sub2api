@@ -20,7 +20,6 @@
 -- 030_ops_drop_legacy_ops_tables.sql
 -- =====================================================================
 
-SET LOCAL lock_timeout = '5s';
 SET LOCAL statement_timeout = '10min';
 
 -- Legacy pre-aggregation tables (from 026 and/or previous branches)
@@ -59,7 +58,6 @@ DROP VIEW IF EXISTS ops_latest_metrics CASCADE;
 -- - This migration is idempotent.
 -- - ops_* tables intentionally avoid strict foreign keys to reduce write amplification/locks.
 
-SET LOCAL lock_timeout = '5s';
 SET LOCAL statement_timeout = '10min';
 
 -- ============================================
@@ -332,7 +330,6 @@ CREATE INDEX IF NOT EXISTS idx_ops_alert_events_fired_at
 -- - We keep a single table with nullable platform/group_id, and enforce uniqueness via a
 --   COALESCE-based unique index (because UNIQUE with NULLs allows duplicates in Postgres).
 
-SET LOCAL lock_timeout = '5s';
 SET LOCAL statement_timeout = '10min';
 
 -- ============================================
@@ -460,7 +457,6 @@ COMMENT ON TABLE ops_metrics_daily IS 'vNext daily pre-aggregated ops metrics (o
 -- This migration intentionally keeps "optional" objects (like pg_trgm) best-effort,
 -- so environments without extension privileges won't fail the whole migration chain.
 
-SET LOCAL lock_timeout = '5s';
 SET LOCAL statement_timeout = '10min';
 
 -- ============================================
@@ -555,7 +551,6 @@ CREATE INDEX IF NOT EXISTS idx_ops_error_logs_error_message_trgm
 -- NOTE: We keep the existing p50/p90/p95/p99 columns as-is; these are still used for
 --       approximate long-window summaries.
 
-SET LOCAL lock_timeout = '5s';
 SET LOCAL statement_timeout = '10min';
 
 -- Hourly table
@@ -581,7 +576,6 @@ ALTER TABLE ops_metrics_daily
 -- Adds notify_email flag to ops_alert_rules to keep UI parity with the backup Ops dashboard.
 -- Migration is idempotent.
 
-SET LOCAL lock_timeout = '5s';
 SET LOCAL statement_timeout = '10min';
 
 ALTER TABLE ops_alert_rules
@@ -603,7 +597,6 @@ ALTER TABLE ops_alert_rules
 --   - success_rate / error_rate are based on SLA-scope counts (exclude is_business_limited).
 --   - upstream_error_rate excludes 429/529.
 
-SET LOCAL lock_timeout = '5s';
 SET LOCAL statement_timeout = '10min';
 
 -- 1) High error rate (P1)
