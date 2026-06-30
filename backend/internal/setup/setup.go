@@ -399,9 +399,7 @@ func initializeDatabase(cfg *SetupConfig) error {
 		}
 	}()
 
-	migrationCtx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
-	defer cancel()
-	return repository.ApplyMigrations(migrationCtx, db)
+	return repository.ApplyMigrations(context.Background(), db)
 }
 
 func createAdminUser(cfg *SetupConfig) (bool, string, error) {
