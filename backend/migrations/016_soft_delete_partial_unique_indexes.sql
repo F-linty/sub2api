@@ -7,10 +7,9 @@
 -- 1. users 表: email 字段
 -- ============================================================================
 
--- 删除旧的唯一约束（可能的命名方式）
-ALTER TABLE users DROP CONSTRAINT IF EXISTS users_email_key;
-DROP INDEX IF EXISTS users_email_key;
-DROP INDEX IF EXISTS user_email_key;
+-- 删除旧的唯一约束/索引（CockroachDB 需用 DROP INDEX CASCADE，不支持 ALTER TABLE DROP CONSTRAINT）
+DROP INDEX IF EXISTS users_email_key CASCADE;
+DROP INDEX IF EXISTS user_email_key CASCADE;
 
 -- 创建部分唯一索引：只对未删除的记录建立唯一约束
 CREATE UNIQUE INDEX IF NOT EXISTS users_email_unique_active
@@ -21,10 +20,8 @@ CREATE UNIQUE INDEX IF NOT EXISTS users_email_unique_active
 -- 2. groups 表: name 字段
 -- ============================================================================
 
--- 删除旧的唯一约束
-ALTER TABLE groups DROP CONSTRAINT IF EXISTS groups_name_key;
-DROP INDEX IF EXISTS groups_name_key;
-DROP INDEX IF EXISTS group_name_key;
+DROP INDEX IF EXISTS groups_name_key CASCADE;
+DROP INDEX IF EXISTS group_name_key CASCADE;
 
 -- 创建部分唯一索引
 CREATE UNIQUE INDEX IF NOT EXISTS groups_name_unique_active
@@ -35,10 +32,8 @@ CREATE UNIQUE INDEX IF NOT EXISTS groups_name_unique_active
 -- 3. user_subscriptions 表: (user_id, group_id) 组合字段
 -- ============================================================================
 
--- 删除旧的唯一约束/索引
-ALTER TABLE user_subscriptions DROP CONSTRAINT IF EXISTS user_subscriptions_user_id_group_id_key;
-DROP INDEX IF EXISTS user_subscriptions_user_id_group_id_key;
-DROP INDEX IF EXISTS usersubscription_user_id_group_id;
+DROP INDEX IF EXISTS user_subscriptions_user_id_group_id_key CASCADE;
+DROP INDEX IF EXISTS usersubscription_user_id_group_id CASCADE;
 
 -- 创建部分唯一索引
 CREATE UNIQUE INDEX IF NOT EXISTS user_subscriptions_user_group_unique_active
