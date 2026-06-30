@@ -13,6 +13,7 @@ UPDATE users
 SET signup_source = 'email'
 WHERE signup_source IS NULL OR signup_source = '';
 
+ALTER TABLE users DROP CONSTRAINT IF EXISTS users_signup_source_check;
 ALTER TABLE users
     ADD CONSTRAINT users_signup_source_check
     CHECK (signup_source IN ('email', 'linuxdo', 'wechat', 'oidc'));

@@ -25,10 +25,12 @@ ALTER TABLE channel_monitors ADD COLUMN IF NOT EXISTS extra_headers      JSONB  
 ALTER TABLE channel_monitors ADD COLUMN IF NOT EXISTS body_override_mode VARCHAR(10) NOT NULL DEFAULT 'off';
 ALTER TABLE channel_monitors ADD COLUMN IF NOT EXISTS body_override      JSONB       NULL;
 
+ALTER TABLE channel_monitors DROP CONSTRAINT IF EXISTS channel_monitors_body_mode_check;
 ALTER TABLE channel_monitors
     ADD CONSTRAINT channel_monitors_body_mode_check
     CHECK (body_override_mode IN ('off', 'merge', 'replace'));
 
+ALTER TABLE channel_monitors DROP CONSTRAINT IF EXISTS channel_monitors_template_id_fkey;
 ALTER TABLE channel_monitors
     ADD CONSTRAINT channel_monitors_template_id_fkey
     FOREIGN KEY (template_id)

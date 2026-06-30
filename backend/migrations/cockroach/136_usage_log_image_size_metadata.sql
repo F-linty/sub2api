@@ -6,6 +6,7 @@ ALTER TABLE usage_logs ADD COLUMN IF NOT EXISTS image_output_size VARCHAR(32);
 ALTER TABLE usage_logs ADD COLUMN IF NOT EXISTS image_size_source VARCHAR(16);
 ALTER TABLE usage_logs ADD COLUMN IF NOT EXISTS image_size_breakdown JSONB;
 
+ALTER TABLE usage_logs DROP CONSTRAINT IF EXISTS usage_logs_image_size_source_check;
 ALTER TABLE usage_logs
     ADD CONSTRAINT usage_logs_image_size_source_check
     CHECK (
@@ -13,6 +14,7 @@ ALTER TABLE usage_logs
         OR image_size_source IN ('output', 'input', 'default', 'legacy')
     );
 
+ALTER TABLE usage_logs DROP CONSTRAINT IF EXISTS usage_logs_image_billing_size_check;
 ALTER TABLE usage_logs
     ADD CONSTRAINT usage_logs_image_billing_size_check
     CHECK (
