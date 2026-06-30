@@ -34,8 +34,8 @@ services:
       - "${BIND_HOST:-0.0.0.0}:${SERVER_PORT:-8080}:8080"
     volumes:
       - sub2api_data:/app/data
-      # Mount CA cert for sslmode=verify-full (uncomment if DATABASE_SSLMODE=verify-full)
-      # - ${COCKROACH_CA_CERT:-/dev/null}:/app/data/crdb-ca.crt:ro
+      # Mount CA cert for sslmode=verify-full
+      - ${COCKROACH_CA_CERT:-/dev/null}:/app/data/crdb-ca.crt:ro
     environment:
       # =======================================================================
       # Auto Setup (REQUIRED for Docker deployment)

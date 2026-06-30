@@ -22,14 +22,10 @@ WORKDIR /app/frontend
 # Install pnpm
 RUN corepack enable && corepack prepare pnpm@latest --activate
 
-# Use faster npm registry
-RUN npm config set registry https://registry.npmmirror.com && \
-    pnpm config set registry https://registry.npmmirror.com
-
 # Install dependencies first (better caching)
 COPY frontend/package.json frontend/pnpm-lock.yaml ./
-RUN printf "fetch-timeout=600000\nfetch-retries=5\nfetch-retry-mintimeout=20000\nfetch-retry-maxtimeout=120000\n" > .npmrc && \
-    pnpm install --frozen-lockfile=false
+RUN --mount=type=cache,id=pnpm-store,target=/root/.local/share/pnpm/store \
+    pnpm install --frozen-lockfile=false --ignore-scripts
 
 # Copy frontend source and build.
 # LegalDocumentView.vue (admin-compliance gate) build-time imports
