@@ -73,7 +73,7 @@ import { useChannelMonitorFormat } from '@/composables/useChannelMonitorFormat'
 
 const props = defineProps<{
   show: boolean
-  monitorId: number | null
+  monitorId: string | number | null
   title: string
 }>()
 
@@ -88,7 +88,7 @@ const { statusLabel, statusBadgeClass, formatLatency, formatPercent } = useChann
 const detail = ref<UserMonitorDetail | null>(null)
 const loading = ref(false)
 
-async function load(id: number) {
+async function load(id: string | number) {
   detail.value = null
   loading.value = true
   try {

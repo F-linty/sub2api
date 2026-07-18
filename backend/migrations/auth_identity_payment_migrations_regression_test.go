@@ -55,7 +55,7 @@ func TestMigration119DefersPaymentIndexRolloutToOnlineFollowup(t *testing.T) {
 
 	sql := string(content)
 	require.Contains(t, sql, "120_enforce_payment_orders_out_trade_no_unique_notx.sql")
-	require.Contains(t, sql, "NULL;")
+	require.Contains(t, sql, "SELECT 1;")
 	require.NotContains(t, sql, "CREATE UNIQUE INDEX")
 	require.NotContains(t, sql, "DROP INDEX")
 
@@ -67,15 +67,17 @@ func TestMigration119DefersPaymentIndexRolloutToOnlineFollowup(t *testing.T) {
 	require.Contains(t, followupSQL, "stale invalid paymentorder_out_trade_no_unique index")
 	require.Contains(t, followupSQL, "CREATE UNIQUE INDEX CONCURRENTLY IF NOT EXISTS paymentorder_out_trade_no_unique")
 	require.NotContains(t, followupSQL, "DROP INDEX CONCURRENTLY IF EXISTS paymentorder_out_trade_no_unique")
-	require.Contains(t, followupSQL, "DROP INDEX CONCURRENTLY IF EXISTS paymentorder_out_trade_no")
+	require.Contains(t, followupSQL, "DROP INDEX IF EXISTS paymentorder_out_trade_no")
+	require.NotContains(t, followupSQL, "DROP INDEX CONCURRENTLY")
 	require.Contains(t, followupSQL, "WHERE out_trade_no <> ''")
 
 	alignmentContent, err := FS.ReadFile("120a_align_payment_orders_out_trade_no_index_name.sql")
 	require.NoError(t, err)
 
 	alignmentSQL := string(alignmentContent)
-	require.Contains(t, alignmentSQL, "paymentorder_out_trade_no_unique")
-	require.Contains(t, alignmentSQL, "RENAME TO paymentorder_out_trade_no")
+	require.Contains(t, alignmentSQL, "CockroachDB compatibility")
+	require.Contains(t, alignmentSQL, "SELECT 1;")
+	require.NotContains(t, alignmentSQL, "RENAME TO")
 }
 
 func TestMigration110SeedsAuthSourceSignupGrantsDisabledByDefault(t *testing.T) {
@@ -161,7 +163,8 @@ func TestMigration151AddsAccountAutoPauseExpiryPartialIndex(t *testing.T) {
 	require.NoError(t, err)
 
 	sql := string(content)
-	require.Contains(t, sql, "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_accounts_autopause_expiry_due")
+	require.Contains(t, sql, "CREATE INDEX IF NOT EXISTS idx_accounts_autopause_expiry_due")
+	require.NotContains(t, sql, "CONCURRENTLY")
 	require.Contains(t, sql, "ON accounts (expires_at)")
 	require.Contains(t, sql, "WHERE deleted_at IS NULL")
 	require.Contains(t, sql, "schedulable = TRUE")
@@ -195,7 +198,10 @@ func TestMigration154AddsSparkShadowColumnsAndConstraintsWithoutHotIndexes(t *te
 	require.Contains(t, sql, "fk_accounts_parent_account_id")
 	require.Contains(t, sql, "FOREIGN KEY (parent_account_id) REFERENCES accounts(id)")
 	require.Contains(t, sql, "ON DELETE RESTRICT")
-	require.Contains(t, sql, "NOT VALID")
+	require.Contains(t, sql, "DROP CONSTRAINT IF EXISTS fk_accounts_parent_account_id")
+	require.NotContains(t, sql, "DO $$")
+	require.NotContains(t, sql, "NOT VALID")
+	require.NotContains(t, sql, "VALIDATE CONSTRAINT")
 	require.NotContains(t, sql, "CREATE INDEX")
 	require.NotContains(t, sql, "CREATE UNIQUE INDEX")
 	require.NotContains(t, sql, "CONCURRENTLY")

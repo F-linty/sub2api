@@ -15,7 +15,7 @@ const EMBEDDED_SRC_QUERY_KEY = 'src_url'
 
 export function buildEmbeddedUrl(
   baseUrl: string,
-  userId?: number,
+  userId?: string | number,
   authToken?: string | null,
   theme: 'light' | 'dark' = 'light',
   lang?: string,

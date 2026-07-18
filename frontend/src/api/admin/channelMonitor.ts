@@ -11,7 +11,7 @@ export type BodyOverrideMode = 'off' | 'merge' | 'replace'
 export type APIMode = 'chat_completions' | 'responses'
 
 export interface ChannelMonitor {
-  id: number
+  id: string | number
   name: string
   provider: Provider
   api_mode: APIMode
@@ -31,7 +31,7 @@ export interface ChannelMonitor {
   /** 每次调度在 interval 基础上 ± [0, jitter] 的随机偏移（秒），0 = 固定间隔 */
   jitter_seconds: number
   last_checked_at: string | null
-  created_by: number
+  created_by: string | number
   created_at: string
   updated_at: string
   /** Latest status of the primary model (empty when no history yet) */
@@ -108,7 +108,7 @@ export interface RunNowResponse {
 }
 
 export interface HistoryItem {
-  id: number
+  id: string | number
   model: string
   status: MonitorStatus
   latency_ms: number | null
@@ -143,7 +143,7 @@ export async function list(
 /**
  * Get a channel monitor by ID
  */
-export async function get(id: number): Promise<ChannelMonitor> {
+export async function get(id: string | number): Promise<ChannelMonitor> {
   const { data } = await apiClient.get<ChannelMonitor>(`/admin/channel-monitors/${id}`)
   return data
 }
@@ -160,7 +160,7 @@ export async function create(params: CreateParams): Promise<ChannelMonitor> {
  * Update an existing channel monitor.
  * api_key field: empty string means "do not modify".
  */
-export async function update(id: number, params: UpdateParams): Promise<ChannelMonitor> {
+export async function update(id: string | number, params: UpdateParams): Promise<ChannelMonitor> {
   const { data } = await apiClient.put<ChannelMonitor>(`/admin/channel-monitors/${id}`, params)
   return data
 }
@@ -168,7 +168,7 @@ export async function update(id: number, params: UpdateParams): Promise<ChannelM
 /**
  * Delete a channel monitor
  */
-export async function del(id: number): Promise<void> {
+export async function del(id: string | number): Promise<void> {
   await apiClient.delete(`/admin/channel-monitors/${id}`)
 }
 
@@ -176,7 +176,7 @@ export async function del(id: number): Promise<void> {
  * Trigger an immediate manual check for a channel monitor.
  * Returns the latest check results for primary + extra models.
  */
-export async function runNow(id: number): Promise<RunNowResponse> {
+export async function runNow(id: string | number): Promise<RunNowResponse> {
   const { data } = await apiClient.post<RunNowResponse>(`/admin/channel-monitors/${id}/run`)
   return data
 }
@@ -185,7 +185,7 @@ export async function runNow(id: number): Promise<RunNowResponse> {
  * List historical check results for a monitor.
  */
 export async function listHistory(
-  id: number,
+  id: string | number,
   params: HistoryParams = {}
 ): Promise<HistoryResponse> {
   const { data } = await apiClient.get<HistoryResponse>(

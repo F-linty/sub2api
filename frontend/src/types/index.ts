@@ -4,6 +4,8 @@
 
 // ==================== Common Types ====================
 
+export type EntityID = string | number
+
 export interface SelectOption {
   value: string | number | boolean | null
   label: string
@@ -64,7 +66,7 @@ export interface UserProfileSourceContext {
 }
 
 export interface User {
-  id: number
+  id: EntityID
   username: string
   email: string
   avatar_url?: string | null
@@ -90,7 +92,7 @@ export interface User {
   concurrency: number // Allowed concurrent requests
   rpm_limit?: number // User-level RPM cap (0 = unlimited); effective as fallback when group has no rpm_limit
   status: 'active' | 'disabled' // Account status
-  allowed_groups: number[] | null // Allowed group IDs (null = all non-exclusive groups)
+  allowed_groups: EntityID[] | null // Allowed group IDs (null = all non-exclusive groups)
   balance_notify_enabled: boolean
   balance_notify_threshold: number | null
   balance_notify_extra_emails: NotifyEmailEntry[]
@@ -106,7 +108,7 @@ export interface AdminUser extends User {
   notes: string
   last_used_at?: string | null
   // 用户专属分组倍率配置 (group_id -> rate_multiplier)
-  group_rates?: Record<number, number>
+  group_rates?: Record<EntityID, number>
   // 当前并发数（仅管理员列表接口返回）
   current_concurrency?: number
 }
@@ -128,7 +130,7 @@ export interface RegisterRequest {
 }
 
 export interface AffiliateInvitee {
-  user_id: number
+  user_id: EntityID
   email: string
   username: string
   created_at?: string
@@ -136,9 +138,9 @@ export interface AffiliateInvitee {
 }
 
 export interface UserAffiliateDetail {
-  user_id: number
+  user_id: EntityID
   aff_code: string
-  inviter_id?: number | null
+  inviter_id?: EntityID | null
   aff_count: number
   aff_quota: number
   aff_frozen_quota: number
@@ -258,8 +260,8 @@ export interface CurrentUserResponse extends User {
 // ==================== Subscription Types ====================
 
 export interface Subscription {
-  id: number
-  user_id: number
+  id: EntityID
+  user_id: EntityID
   name: string
   url: string
   type: 'clash' | 'v2ray' | 'surge' | 'quantumult' | 'shadowrocket'
@@ -298,7 +300,7 @@ export type AnnouncementOperator = 'in' | 'gt' | 'gte' | 'lt' | 'lte' | 'eq'
 export interface AnnouncementCondition {
   type: AnnouncementConditionType
   operator: AnnouncementOperator
-  group_ids?: number[]
+  group_ids?: EntityID[]
   value?: number
 }
 
@@ -311,7 +313,7 @@ export interface AnnouncementTargeting {
 }
 
 export interface Announcement {
-  id: number
+  id: string
   title: string
   content: string
   status: AnnouncementStatus
@@ -319,14 +321,14 @@ export interface Announcement {
   targeting: AnnouncementTargeting
   starts_at?: string
   ends_at?: string
-  created_by?: number
-  updated_by?: number
+  created_by?: EntityID
+  updated_by?: EntityID
   created_at: string
   updated_at: string
 }
 
 export interface UserAnnouncement {
-  id: number
+  id: string
   title: string
   content: string
   notify_mode: AnnouncementNotifyMode
@@ -358,7 +360,7 @@ export interface UpdateAnnouncementRequest {
 }
 
 export interface AnnouncementUserReadStatus {
-  user_id: number
+  user_id: EntityID
   email: string
   username: string
   balance: number
@@ -369,8 +371,8 @@ export interface AnnouncementUserReadStatus {
 // ==================== Proxy Node Types ====================
 
 export interface ProxyNode {
-  id: number
-  subscription_id: number
+  id: EntityID
+  subscription_id: EntityID
   name: string
   type: 'ss' | 'ssr' | 'vmess' | 'vless' | 'trojan' | 'hysteria' | 'hysteria2'
   server: string
@@ -386,7 +388,7 @@ export interface ProxyNode {
 // ==================== Conversion Types ====================
 
 export interface ConversionRequest {
-  subscription_ids: number[]
+  subscription_ids: EntityID[]
   target_type: 'clash' | 'v2ray' | 'surge' | 'quantumult' | 'shadowrocket'
   filter?: {
     name_pattern?: string
@@ -410,7 +412,7 @@ export interface ConversionResult {
 // ==================== Statistics Types ====================
 
 export interface SubscriptionStats {
-  subscription_id: number
+  subscription_id: EntityID
   total_nodes: number
   available_nodes: number
   avg_latency: number | null
@@ -461,6 +463,13 @@ export interface Toast {
   startTime?: number // timestamp when toast was created, for progress bar
 }
 
+export interface PageNotice {
+  id: string
+  type: ToastType
+  message: string
+  duration?: number
+}
+
 export interface AppState {
   sidebarCollapsed: boolean
   loading: boolean
@@ -504,7 +513,7 @@ export interface OpenAIMessagesDispatchModelConfig {
 }
 
 export interface Group {
-  id: number
+  id: EntityID
   name: string
   description: string | null
   platform: GroupPlatform
@@ -540,8 +549,8 @@ export interface Group {
   peak_rate_multiplier: number
   // Claude Code 客户端限制
   claude_code_only: boolean
-  fallback_group_id: number | null
-  fallback_group_id_on_invalid_request: number | null
+  fallback_group_id: EntityID | null
+  fallback_group_id_on_invalid_request: EntityID | null
   // OpenAI Messages 调度开关（用户侧需要此字段判断是否展示 Claude Code 教程）
   allow_messages_dispatch?: boolean
   default_mapped_model?: string
@@ -554,7 +563,7 @@ export interface Group {
 
 export interface AdminGroup extends Group {
   // 模型路由配置（仅管理员可见，内部信息）
-  model_routing: Record<string, number[]> | null
+  model_routing: Record<string, string[]> | null
   model_routing_enabled: boolean
 
   // MCP XML 协议注入（仅 antigravity 平台使用）
@@ -583,11 +592,11 @@ export interface ModelsListConfig {
 }
 
 export interface ApiKey {
-  id: number
-  user_id: number
+  id: EntityID
+  user_id: EntityID
   key: string
   name: string
-  group_id: number | null
+  group_id: EntityID | null
   status: 'active' | 'inactive' | 'quota_exhausted' | 'expired'
   ip_whitelist: string[]
   ip_blacklist: string[]
@@ -616,7 +625,7 @@ export interface ApiKey {
 
 export interface CreateApiKeyRequest {
   name: string
-  group_id?: number | null
+  group_id?: EntityID | null
   custom_key?: string // Optional custom API Key
   ip_whitelist?: string[]
   ip_blacklist?: string[]
@@ -629,7 +638,7 @@ export interface CreateApiKeyRequest {
 
 export interface UpdateApiKeyRequest {
   name?: string
-  group_id?: number | null
+  group_id?: EntityID | null
   status?: 'active' | 'inactive'
   ip_whitelist?: string[]
   ip_blacklist?: string[]
@@ -672,21 +681,21 @@ export interface CreateGroupRequest {
   peak_end?: string
   peak_rate_multiplier?: number
   claude_code_only?: boolean
-  fallback_group_id?: number | null
-  fallback_group_id_on_invalid_request?: number | null
+  fallback_group_id?: EntityID | null
+  fallback_group_id_on_invalid_request?: EntityID | null
   mcp_xml_inject?: boolean
   supported_model_scopes?: string[]
   models_list_config?: ModelsListConfig
   allow_messages_dispatch?: boolean
   default_mapped_model?: string
   messages_dispatch_model_config?: OpenAIMessagesDispatchModelConfig
-  model_routing?: Record<string, number[]> | null
+  model_routing?: Record<string, string[]> | null
   model_routing_enabled?: boolean
   rpm_limit?: number
   require_oauth_only?: boolean
   require_privacy_set?: boolean
   // 从指定分组复制账号
-  copy_accounts_from_group_ids?: number[]
+  copy_accounts_from_group_ids?: EntityID[]
 }
 
 export interface UpdateGroupRequest {
@@ -720,20 +729,20 @@ export interface UpdateGroupRequest {
   peak_end?: string
   peak_rate_multiplier?: number
   claude_code_only?: boolean
-  fallback_group_id?: number | null
-  fallback_group_id_on_invalid_request?: number | null
+  fallback_group_id?: EntityID | null
+  fallback_group_id_on_invalid_request?: EntityID | null
   mcp_xml_inject?: boolean
   supported_model_scopes?: string[]
   models_list_config?: ModelsListConfig
   allow_messages_dispatch?: boolean
   default_mapped_model?: string
   messages_dispatch_model_config?: OpenAIMessagesDispatchModelConfig
-  model_routing?: Record<string, number[]> | null
+  model_routing?: Record<string, string[]> | null
   model_routing_enabled?: boolean
   rpm_limit?: number
   require_oauth_only?: boolean
   require_privacy_set?: boolean
-  copy_accounts_from_group_ids?: number[]
+  copy_accounts_from_group_ids?: EntityID[]
 }
 
 // ==================== Account & Proxy Types ====================
@@ -752,7 +761,7 @@ export interface ClaudeModel {
 }
 
 export interface Proxy {
-  id: number
+  id: EntityID
   name: string
   protocol: ProxyProtocol
   host: string
@@ -776,14 +785,14 @@ export interface Proxy {
   quality_checked?: number
   expires_at: string | null
   fallback_mode: 'none' | 'proxy' | 'direct'
-  backup_proxy_id?: number | null
+  backup_proxy_id?: EntityID | null
   expiry_warn_days: number
   created_at: string
   updated_at: string
 }
 
 export interface ProxyAccountSummary {
-  id: number
+  id: EntityID
   name: string
   platform: AccountPlatform
   type: AccountType
@@ -800,7 +809,7 @@ export interface ProxyQualityCheckItem {
 }
 
 export interface ProxyQualityCheckResult {
-  proxy_id: number
+  proxy_id: string | number
   score: number
   grade: string
   summary: string
@@ -866,7 +875,7 @@ export interface TempUnschedulableStatus {
 }
 
 export interface Account {
-  id: number
+  id: string
   name: string
   notes?: string | null
   platform: AccountPlatform
@@ -882,8 +891,8 @@ export interface Account {
     model_rate_limits?: Record<string, { rate_limited_at: string; rate_limit_reset_at: string }>
     antigravity_credits_overages?: Record<string, { activated_at: string; active_until: string }>
   } & Record<string, unknown>)
-  proxy_id: number | null
-  proxy_fallback_origin_id?: number | null
+  proxy_id: EntityID | null
+  proxy_fallback_origin_id?: EntityID | null
   proxy_fallback_origin_name?: string | null
   concurrency: number
   load_factor?: number | null
@@ -905,7 +914,7 @@ export interface Account {
   created_at: string
   updated_at: string
   proxy?: Proxy
-  group_ids?: number[] // Groups this account belongs to
+  group_ids?: EntityID[] // Groups this account belongs to
   groups?: Group[] // Preloaded group objects
 
   // Rate limit & scheduling fields
@@ -937,7 +946,7 @@ export interface Account {
 
   // TLS指纹伪装（仅 Anthropic OAuth/SetupToken 账号有效）
   enable_tls_fingerprint?: boolean | null
-  tls_fingerprint_profile_id?: number | null
+  tls_fingerprint_profile_id?: EntityID | null
 
   // 会话ID伪装（仅 Anthropic OAuth/SetupToken 账号有效）
   // 启用后将在15分钟内固定 metadata.user_id 中的 session ID
@@ -1154,12 +1163,12 @@ export interface CreateAccountRequest {
   type: AccountType
   credentials: Record<string, unknown>
   extra?: Record<string, unknown>
-  proxy_id?: number | null
+  proxy_id?: EntityID | null
   concurrency?: number
   load_factor?: number | null
   priority?: number
   rate_multiplier?: number // Account billing multiplier (>=0, 0 means free)
-  group_ids?: number[]
+  group_ids?: EntityID[]
   expires_at?: number | null
   auto_pause_on_expired?: boolean
   confirm_mixed_channel_risk?: boolean
@@ -1171,14 +1180,14 @@ export interface UpdateAccountRequest {
   type?: AccountType
   credentials?: Record<string, unknown>
   extra?: Record<string, unknown>
-  proxy_id?: number | null
+  proxy_id?: EntityID | null
   concurrency?: number
   load_factor?: number | null
   priority?: number
   rate_multiplier?: number // Account billing multiplier (>=0, 0 means free)
   schedulable?: boolean
   status?: 'active' | 'inactive' | 'error'
-  group_ids?: number[]
+  group_ids?: EntityID[]
   expires_at?: number | null
   auto_pause_on_expired?: boolean
   confirm_mixed_channel_risk?: boolean
@@ -1186,12 +1195,12 @@ export interface UpdateAccountRequest {
 
 export interface CheckMixedChannelRequest {
   platform: AccountPlatform
-  group_ids: number[]
-  account_id?: number
+  group_ids: EntityID[]
+  account_id?: EntityID
 }
 
 export interface MixedChannelWarningDetails {
-  group_id: number
+  group_id: EntityID
   group_name: string
   current_platform: string
   other_platform: string
@@ -1213,7 +1222,7 @@ export interface CreateProxyRequest {
   password?: string | null
   expires_at?: number | null   // unix 秒；null/0 = 永不过期
   fallback_mode?: 'none' | 'proxy' | 'direct'
-  backup_proxy_id?: number | null
+  backup_proxy_id?: EntityID | null
   expiry_warn_days?: number
 }
 
@@ -1227,7 +1236,7 @@ export interface UpdateProxyRequest {
   status?: 'active' | 'inactive'
   expires_at?: number | null   // unix 秒；null/0 = 永不过期
   fallback_mode?: 'none' | 'proxy' | 'direct'
-  backup_proxy_id?: number | null
+  backup_proxy_id?: EntityID | null
   expiry_warn_days?: number
 }
 
@@ -1288,8 +1297,8 @@ export interface CodexSessionImportRequest {
   contents?: string[]
   name?: string
   notes?: string | null
-  group_ids?: number[]
-  proxy_id?: number | null
+  group_ids?: EntityID[]
+  proxy_id?: EntityID | null
   concurrency?: number
   priority?: number
   rate_multiplier?: number
@@ -1307,8 +1316,8 @@ export interface OpenAICodexPATCreateRequest {
   access_token: string
   name?: string
   notes?: string | null
-  group_ids?: number[]
-  proxy_id?: number | null
+  group_ids?: EntityID[]
+  proxy_id?: EntityID | null
   concurrency?: number
   priority?: number
   rate_multiplier?: number
@@ -1331,7 +1340,7 @@ export interface CodexSessionImportItem {
   index: number
   name?: string
   action: 'created' | 'updated' | 'skipped' | 'failed'
-  account_id?: number
+  account_id?: string
   message?: string
 }
 
@@ -1354,10 +1363,10 @@ export type ImageSizeSource = 'output' | 'input' | 'default' | 'legacy'
 export type ImageSizeBreakdown = Record<string, number>
 
 export interface UsageLog {
-  id: number
-  user_id: number
-  api_key_id: number
-  account_id: number | null
+  id: EntityID
+  user_id: EntityID
+  api_key_id: EntityID
+  account_id: EntityID | null
   request_id: string
   model: string
   service_tier?: string | null
@@ -1365,8 +1374,8 @@ export interface UsageLog {
   inbound_endpoint?: string | null
   upstream_endpoint?: string | null
 
-  group_id: number | null
-  subscription_id: number | null
+  group_id: EntityID | null
+  subscription_id: EntityID | null
 
   input_tokens: number
   output_tokens: number
@@ -1420,7 +1429,7 @@ export interface UsageLog {
 }
 
 export interface UsageLogAccountSummary {
-  id: number
+  id: EntityID
   name: string
 }
 
@@ -1434,7 +1443,7 @@ export interface AdminUsageLog extends UsageLog {
   account_stats_cost?: number | null
 
   // 渠道 ID 和计费等级（仅管理员可见）
-  channel_id?: number | null
+  channel_id?: string | number | null
   billing_tier?: string | null
 
   // 最小账号信息（仅管理员接口返回）
@@ -1444,10 +1453,10 @@ export interface AdminUsageLog extends UsageLog {
 export interface UsageCleanupFilters {
   start_time: string
   end_time: string
-  user_id?: number
-  api_key_id?: number
-  account_id?: number
-  group_id?: number
+  user_id?: EntityID
+  api_key_id?: EntityID
+  account_id?: EntityID
+  group_id?: EntityID
   model?: string | null
   request_type?: UsageRequestType | null
   stream?: boolean | null
@@ -1455,10 +1464,10 @@ export interface UsageCleanupFilters {
 }
 
 export interface UsageCleanupTask {
-  id: number
+  id: EntityID
   status: string
   filters: UsageCleanupFilters
-  created_by: number
+  created_by: string | number
   deleted_rows: number
   error_message?: string | null
   canceled_by?: number | null
@@ -1470,18 +1479,18 @@ export interface UsageCleanupTask {
 }
 
 export interface RedeemCode {
-  id: number
+  id: EntityID
   code: string
   type: RedeemCodeType
   value: number
   status: 'active' | 'used' | 'expired' | 'unused' | 'disabled'
-  used_by: number | null
+  used_by: EntityID | null
   used_at: string | null
   created_at: string
   expires_at?: string | null
   updated_at?: string
   notes?: string
-  group_id?: number | null // 订阅类型专用
+  group_id?: EntityID | null // 订阅类型专用
   validity_days?: number // 订阅类型专用
   user?: User
   group?: Group // 关联的分组
@@ -1491,7 +1500,7 @@ export interface GenerateRedeemCodesRequest {
   count: number
   type: RedeemCodeType
   value: number
-  group_id?: number | null // 订阅类型专用
+  group_id?: EntityID | null // 订阅类型专用
   validity_days?: number // 订阅类型专用
   expires_at?: string | null
   expires_in_days?: number
@@ -1501,11 +1510,11 @@ export interface BatchUpdateRedeemCodeFields {
   status?: 'unused' | 'disabled'
   expires_at?: string | null
   notes?: string
-  group_id?: number | null
+  group_id?: EntityID | null
 }
 
 export interface BatchUpdateRedeemCodesRequest {
-  ids: number[]
+  ids: EntityID[]
   fields: BatchUpdateRedeemCodeFields
 }
 
@@ -1620,7 +1629,7 @@ export interface EndpointStat {
 }
 
 export interface GroupStat {
-  group_id: number
+  group_id: EntityID
   group_name: string
   requests: number
   total_tokens: number
@@ -1630,7 +1639,7 @@ export interface GroupStat {
 }
 
 export interface UserBreakdownItem {
-  user_id: number
+  user_id: EntityID
   email: string
   requests: number
   input_tokens: number
@@ -1644,7 +1653,7 @@ export interface UserBreakdownItem {
 
 export interface UserUsageTrendPoint {
   date: string
-  user_id: number
+  user_id: EntityID
   email: string
   username: string
   requests: number
@@ -1654,7 +1663,7 @@ export interface UserUsageTrendPoint {
 }
 
 export interface UserSpendingRankingItem {
-  user_id: number
+  user_id: EntityID
   email: string
   actual_cost: number
   requests: number
@@ -1672,7 +1681,7 @@ export interface UserSpendingRankingResponse {
 
 export interface ApiKeyUsageTrendPoint {
   date: string
-  api_key_id: number
+  api_key_id: EntityID
   key_name: string
   requests: number
   tokens: number
@@ -1689,10 +1698,10 @@ export interface UpdateUserRequest {
   balance?: number
   concurrency?: number
   status?: 'active' | 'disabled'
-  allowed_groups?: number[] | null
+  allowed_groups?: EntityID[] | null
   // 用户专属分组倍率配置 (group_id -> rate_multiplier | null)
   // null 表示删除该分组的专属倍率
-  group_rates?: Record<number, number | null>
+  group_rates?: Record<EntityID, number | null>
 }
 
 export interface ChangePasswordRequest {
@@ -1703,9 +1712,9 @@ export interface ChangePasswordRequest {
 // ==================== User Subscription Types ====================
 
 export interface UserSubscription {
-  id: number
-  user_id: number
-  group_id: number
+  id: EntityID
+  user_id: EntityID
+  group_id: EntityID
   status: 'active' | 'expired' | 'revoked' | 'suspended'
   starts_at: string
   daily_usage_usd: number
@@ -1723,7 +1732,7 @@ export interface UserSubscription {
 }
 
 export interface SubscriptionProgress {
-  subscription_id: number
+  subscription_id: EntityID
   daily: {
     used: number
     limit: number | null
@@ -1747,14 +1756,14 @@ export interface SubscriptionProgress {
 }
 
 export interface AssignSubscriptionRequest {
-  user_id: number
-  group_id: number
+  user_id: EntityID
+  group_id: EntityID
   validity_days?: number
 }
 
 export interface BulkAssignSubscriptionRequest {
-  user_ids: number[]
-  group_id: number
+  user_ids: (string | number)[]
+  group_id: EntityID
   validity_days?: number
 }
 
@@ -1765,7 +1774,7 @@ export interface ExtendSubscriptionRequest {
 // ==================== Query Parameters ====================
 
 export interface UserErrorRequest {
-  id: number
+  id: EntityID
   created_at: string
   model: string
   inbound_endpoint: string
@@ -1796,7 +1805,7 @@ export interface UserErrorListParams {
   model?: string
   status_code?: number
   category?: string
-  api_key_id?: number
+  api_key_id?: EntityID
   // 服务端排序,列白名单见后端 opsErrorLogsOrderBy(created_at/model/status_code)
   sort_by?: string
   sort_order?: 'asc' | 'desc'
@@ -1805,10 +1814,10 @@ export interface UserErrorListParams {
 export interface UsageQueryParams {
   page?: number
   page_size?: number
-  api_key_id?: number
-  user_id?: number
-  account_id?: number
-  group_id?: number
+  api_key_id?: EntityID
+  user_id?: EntityID
+  account_id?: EntityID
+  group_id?: EntityID
   model?: string
   request_type?: UsageRequestType
   stream?: boolean
@@ -1897,7 +1906,7 @@ export interface UserAttributeValidation {
 }
 
 export interface UserAttributeDefinition {
-  id: number
+  id: EntityID
   key: string
   name: string
   description: string
@@ -1913,9 +1922,9 @@ export interface UserAttributeDefinition {
 }
 
 export interface UserAttributeValue {
-  id: number
-  user_id: number
-  attribute_id: number
+  id: EntityID
+  user_id: EntityID
+  attribute_id: EntityID
   value: string
   created_at: string
   updated_at: string
@@ -1948,13 +1957,13 @@ export interface UpdateUserAttributeRequest {
 }
 
 export interface UserAttributeValuesMap {
-  [attributeId: number]: string
+  [attributeId: string]: string
 }
 
 // ==================== Promo Code Types ====================
 
 export interface PromoCode {
-  id: number
+  id: EntityID
   code: string
   bonus_amount: number
   max_uses: number
@@ -1967,9 +1976,9 @@ export interface PromoCode {
 }
 
 export interface PromoCodeUsage {
-  id: number
-  promo_code_id: number
-  user_id: number
+  id: EntityID
+  promo_code_id: EntityID
+  user_id: EntityID
   bonus_amount: number
   used_at: string
   user?: User
@@ -2044,8 +2053,8 @@ export interface TotpLogin2FARequest {
 // ==================== Scheduled Test Types ====================
 
 export interface ScheduledTestPlan {
-  id: number
-  account_id: number
+  id: EntityID
+  account_id: string
   model_id: string
   cron_expression: string
   enabled: boolean
@@ -2058,8 +2067,8 @@ export interface ScheduledTestPlan {
 }
 
 export interface ScheduledTestResult {
-  id: number
-  plan_id: number
+  id: EntityID
+  plan_id: EntityID
   status: string
   response_text: string
   error_message: string
@@ -2070,7 +2079,7 @@ export interface ScheduledTestResult {
 }
 
 export interface CreateScheduledTestPlanRequest {
-  account_id: number
+  account_id: EntityID
   model_id: string
   cron_expression: string
   enabled?: boolean

@@ -237,7 +237,7 @@ function readRouteQueryString(key: string): string {
 
 function restoreRecoverySnapshot(context: {
   resumeToken: string
-  routeOrderId: number
+  routeOrderId: string
   routeOutTradeNo: string
 }) {
   if (typeof window === 'undefined') {
@@ -264,7 +264,7 @@ function restoreRecoverySnapshot(context: {
     return null
   }
 
-  if (context.routeOrderId > 0 && restored.orderId !== context.routeOrderId) {
+  if (context.routeOrderId && String(restored.orderId) !== context.routeOrderId) {
     return null
   }
 
@@ -339,9 +339,9 @@ function scheduleStatusRefresh(refreshOrder: (() => Promise<ResolvedOrder | null
 
 onMounted(async () => {
   const resumeToken = readRouteQueryString('resume_token')
-  const routeOrderId = Number(readRouteQueryString('order_id')) || 0
+  const routeOrderId = readRouteQueryString('order_id')
   let outTradeNo = readRouteQueryString('out_trade_no')
-  let orderId = 0
+  let orderId: string | number | '' = ''
   let resumeTokenLookupFailed = false
 
   const restored = restoreRecoverySnapshot({
@@ -366,20 +366,20 @@ onMounted(async () => {
       if (!orderId) {
         orderId = hasOrderId(resolvedOrder) ? resolvedOrder.id : 0
       }
-    } else if (routeOrderId > 0) {
+    } else if (routeOrderId) {
       resumeTokenLookupFailed = true
       orderId = routeOrderId
     } else {
       resumeTokenLookupFailed = true
     }
-  } else if (routeOrderId > 0) {
+  } else if (routeOrderId) {
     orderId = routeOrderId
   }
 
   const hasLegacyFallbackContext = readRouteQueryString('trade_status').trim() !== ''
-  const shouldUsePublicOutTradeNo = outTradeNo !== '' && (hasLegacyFallbackContext || routeOrderId > 0 || orderId > 0)
+  const shouldUsePublicOutTradeNo = outTradeNo !== '' && (hasLegacyFallbackContext || !!routeOrderId || !!orderId)
 
-  if (!order.value && orderId && (!resumeToken || routeOrderId > 0)) {
+  if (!order.value && orderId && (!resumeToken || !!routeOrderId)) {
     try {
       setResolvedOrder(await paymentStore.pollOrderStatus(orderId))
     } catch (_err: unknown) {

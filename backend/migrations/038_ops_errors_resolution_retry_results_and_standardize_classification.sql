@@ -2,8 +2,6 @@
 --
 -- This migration is intentionally idempotent.
 
-SET LOCAL lock_timeout = '5s';
-SET LOCAL statement_timeout = '10min';
 
 -- ============================================
 -- 1) ops_error_logs: resolution fields

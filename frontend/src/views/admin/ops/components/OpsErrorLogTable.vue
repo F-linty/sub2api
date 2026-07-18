@@ -303,7 +303,7 @@ interface Props {
 }
 
 interface Emits {
-  (e: 'openErrorDetail', id: number): void
+  (e: 'openErrorDetail', id: string | number): void
   (e: 'update:page', value: number): void
   (e: 'update:pageSize', value: number): void
   (e: 'ipGeoBatchFailed'): void

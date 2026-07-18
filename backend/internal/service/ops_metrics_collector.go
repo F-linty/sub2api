@@ -453,16 +453,23 @@ WHERE created_at >= $1 AND created_at < $2`
 func (c *OpsMetricsCollector) queryUsageLatency(ctx context.Context, start, end time.Time) (duration opsCollectedPercentiles, ttft opsCollectedPercentiles, err error) {
 	{
 		q := `
+WITH ranked AS (
+  SELECT
+    duration_ms::FLOAT8 AS v,
+    ROW_NUMBER() OVER (ORDER BY duration_ms) AS rn,
+    COUNT(*) OVER () AS cnt
+  FROM usage_logs
+  WHERE created_at >= $1 AND created_at < $2
+    AND duration_ms IS NOT NULL
+)
 SELECT
-  percentile_cont(0.50) WITHIN GROUP (ORDER BY duration_ms) AS p50,
-  percentile_cont(0.90) WITHIN GROUP (ORDER BY duration_ms) AS p90,
-  percentile_cont(0.95) WITHIN GROUP (ORDER BY duration_ms) AS p95,
-  percentile_cont(0.99) WITHIN GROUP (ORDER BY duration_ms) AS p99,
-  AVG(duration_ms) AS avg_ms,
-  MAX(duration_ms) AS max_ms
-FROM usage_logs
-WHERE created_at >= $1 AND created_at < $2
-  AND duration_ms IS NOT NULL`
+  MIN(v) FILTER (WHERE rn::FLOAT8 >= cnt::FLOAT8 * 0.50) AS p50,
+  MIN(v) FILTER (WHERE rn::FLOAT8 >= cnt::FLOAT8 * 0.90) AS p90,
+  MIN(v) FILTER (WHERE rn::FLOAT8 >= cnt::FLOAT8 * 0.95) AS p95,
+  MIN(v) FILTER (WHERE rn::FLOAT8 >= cnt::FLOAT8 * 0.99) AS p99,
+  AVG(v) AS avg_ms,
+  MAX(v) AS max_ms
+FROM ranked`
 
 		var p50, p90, p95, p99 sql.NullFloat64
 		var avg sql.NullFloat64
@@ -486,16 +493,23 @@ WHERE created_at >= $1 AND created_at < $2
 
 	{
 		q := `
+WITH ranked AS (
+  SELECT
+    first_token_ms::FLOAT8 AS v,
+    ROW_NUMBER() OVER (ORDER BY first_token_ms) AS rn,
+    COUNT(*) OVER () AS cnt
+  FROM usage_logs
+  WHERE created_at >= $1 AND created_at < $2
+    AND first_token_ms IS NOT NULL
+)
 SELECT
-  percentile_cont(0.50) WITHIN GROUP (ORDER BY first_token_ms) AS p50,
-  percentile_cont(0.90) WITHIN GROUP (ORDER BY first_token_ms) AS p90,
-  percentile_cont(0.95) WITHIN GROUP (ORDER BY first_token_ms) AS p95,
-  percentile_cont(0.99) WITHIN GROUP (ORDER BY first_token_ms) AS p99,
-  AVG(first_token_ms) AS avg_ms,
-  MAX(first_token_ms) AS max_ms
-FROM usage_logs
-WHERE created_at >= $1 AND created_at < $2
-  AND first_token_ms IS NOT NULL`
+  MIN(v) FILTER (WHERE rn::FLOAT8 >= cnt::FLOAT8 * 0.50) AS p50,
+  MIN(v) FILTER (WHERE rn::FLOAT8 >= cnt::FLOAT8 * 0.90) AS p90,
+  MIN(v) FILTER (WHERE rn::FLOAT8 >= cnt::FLOAT8 * 0.95) AS p95,
+  MIN(v) FILTER (WHERE rn::FLOAT8 >= cnt::FLOAT8 * 0.99) AS p99,
+  AVG(v) AS avg_ms,
+  MAX(v) AS max_ms
+FROM ranked`
 
 		var p50, p90, p95, p99 sql.NullFloat64
 		var avg sql.NullFloat64

@@ -49,7 +49,7 @@ export async function list(
  * @param id - Redeem code ID
  * @returns Redeem code details
  */
-export async function getById(id: number): Promise<RedeemCode> {
+export async function getById(id: string | number): Promise<RedeemCode> {
   const { data } = await apiClient.get<RedeemCode>(`/admin/redeem-codes/${id}`)
   return data
 }
@@ -68,7 +68,7 @@ export async function generate(
   count: number,
   type: RedeemCodeType,
   value: number,
-  groupId?: number | null,
+  groupId?: string | number | null,
   validityDays?: number,
   expiresInDays?: number | null
 ): Promise<RedeemCode[]> {
@@ -98,7 +98,7 @@ export async function generate(
  * @param id - Redeem code ID
  * @returns Success confirmation
  */
-export async function deleteCode(id: number): Promise<{ message: string }> {
+export async function deleteCode(id: string | number): Promise<{ message: string }> {
   const { data } = await apiClient.delete<{ message: string }>(`/admin/redeem-codes/${id}`)
   return data
 }
@@ -108,7 +108,7 @@ export async function deleteCode(id: number): Promise<{ message: string }> {
  * @param ids - Array of redeem code IDs
  * @returns Success confirmation
  */
-export async function batchDelete(ids: number[]): Promise<{
+export async function batchDelete(ids: (string | number)[]): Promise<{
   deleted: number
   message: string
 }> {
@@ -126,7 +126,7 @@ export async function batchDelete(ids: number[]): Promise<{
  * @returns Updated count
  */
 export async function batchUpdate(
-  ids: number[],
+  ids: (string | number)[],
   fields: BatchUpdateRedeemCodeFields
 ): Promise<{
   updated: number
@@ -144,7 +144,7 @@ export async function batchUpdate(
  * @param id - Redeem code ID
  * @returns Updated redeem code
  */
-export async function expire(id: number): Promise<RedeemCode> {
+export async function expire(id: string | number): Promise<RedeemCode> {
   const { data } = await apiClient.post<RedeemCode>(`/admin/redeem-codes/${id}/expire`)
   return data
 }

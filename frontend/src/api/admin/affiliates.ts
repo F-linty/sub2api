@@ -8,7 +8,7 @@ import { apiClient } from '../client'
 import type { PaginatedResponse } from '@/types'
 
 export interface AffiliateAdminEntry {
-  user_id: number
+  user_id: string | number
   email: string
   username: string
   aff_code: string
@@ -65,7 +65,7 @@ export interface AffiliateRebateRecord {
 
 export interface AffiliateTransferRecord {
   ledger_id: number
-  user_id: number
+  user_id: string | number
   user_email: string
   username: string
   amount: number
@@ -78,7 +78,7 @@ export interface AffiliateTransferRecord {
 }
 
 export interface AffiliateUserOverview {
-  user_id: number
+  user_id: string | number
   email: string
   username: string
   aff_code: string
@@ -97,14 +97,14 @@ export interface UpdateAffiliateUserRequest {
 }
 
 export interface BatchSetRateRequest {
-  user_ids: number[]
+  user_ids: (string | number)[]
   aff_rebate_rate_percent?: number | null
   /** Set true to clear rates instead of setting. */
   clear?: boolean
 }
 
 export interface SimpleUser {
-  id: number
+  id: string | number
   email: string
   username: string
 }
@@ -134,10 +134,10 @@ export async function lookupUsers(q: string): Promise<SimpleUser[]> {
 }
 
 export async function updateUserSettings(
-  userId: number,
+  userId: string | number,
   payload: UpdateAffiliateUserRequest,
-): Promise<{ user_id: number }> {
-  const { data } = await apiClient.put<{ user_id: number }>(
+): Promise<{ user_id: string | number }> {
+  const { data } = await apiClient.put<{ user_id: string | number }>(
     `/admin/affiliates/users/${userId}`,
     payload,
   )
@@ -145,9 +145,9 @@ export async function updateUserSettings(
 }
 
 export async function clearUserSettings(
-  userId: number,
-): Promise<{ user_id: number }> {
-  const { data } = await apiClient.delete<{ user_id: number }>(
+  userId: string | number,
+): Promise<{ user_id: string | number }> {
+  const { data } = await apiClient.delete<{ user_id: string | number }>(
     `/admin/affiliates/users/${userId}`,
   )
   return data
@@ -207,7 +207,7 @@ export async function listTransferRecords(
 }
 
 export async function getUserOverview(
-  userId: number,
+  userId: string | number,
 ): Promise<AffiliateUserOverview> {
   const { data } = await apiClient.get<AffiliateUserOverview>(
     `/admin/affiliates/users/${userId}/overview`,

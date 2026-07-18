@@ -84,7 +84,7 @@ import { ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { getUserBreakdown, type UserBreakdownParams } from '@/api/admin/dashboard'
 import { formatCompactNumber, formatCostFixed } from '@/utils/format'
-import type { UserBreakdownItem } from '@/types'
+import type { EntityID, UserBreakdownItem } from '@/types'
 import Select from '@/components/common/Select.vue'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 
@@ -95,7 +95,7 @@ const props = defineProps<{
   model?: string
 }>()
 
-defineEmits<{ (e: 'select-user', userId: number, email: string): void }>()
+defineEmits<{ (e: 'select-user', userId: EntityID, email: string): void }>()
 
 const { t } = useI18n()
 

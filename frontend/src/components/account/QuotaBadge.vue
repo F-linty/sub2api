@@ -12,12 +12,12 @@ const { t } = useI18n()
 
 const badgeClass = computed(() => {
   if (props.used >= props.limit) {
-    return 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+    return 'bg-[#fbe7df] text-[#873628] dark:bg-red-500/20 dark:text-red-200'
   }
   if (props.used >= props.limit * 0.8) {
-    return 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
+    return 'bg-[#fff4dc] text-[#8a5a00] dark:bg-amber-500/20 dark:text-amber-200'
   }
-  return 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
+  return 'bg-[#eaf7f1] text-[#0f8f6a] dark:bg-emerald-500/20 dark:text-emerald-200'
 })
 
 const tooltip = computed(() => {

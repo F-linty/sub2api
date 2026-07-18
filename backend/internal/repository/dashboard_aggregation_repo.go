@@ -218,7 +218,7 @@ func (r *dashboardAggregationRepository) CleanupUsageLogs(ctx context.Context, c
 		return r.dropUsageLogsPartitions(ctx, cutoff)
 	}
 	for {
-		res, err := r.sql.ExecContext(ctx, `
+		query := `
 			WITH victims AS (
 				SELECT ctid
 				FROM usage_logs
@@ -227,7 +227,21 @@ func (r *dashboardAggregationRepository) CleanupUsageLogs(ctx context.Context, c
 			)
 			DELETE FROM usage_logs
 			WHERE ctid IN (SELECT ctid FROM victims)
-		`, cutoff.UTC(), usageLogsCleanupBatchSize)
+		`
+		if !CurrentDatabaseDialect().UsesPhysicalRowID() {
+			query = `
+				WITH victims AS (
+					SELECT id
+					FROM usage_logs
+					WHERE created_at < $1
+					ORDER BY id
+					LIMIT $2
+				)
+				DELETE FROM usage_logs
+				WHERE id IN (SELECT id FROM victims)
+			`
+		}
+		res, err := r.sql.ExecContext(ctx, query, cutoff.UTC(), usageLogsCleanupBatchSize)
 		if err != nil {
 			return err
 		}
@@ -242,8 +256,12 @@ func (r *dashboardAggregationRepository) CleanupUsageLogs(ctx context.Context, c
 }
 
 func (r *dashboardAggregationRepository) CleanupUsageBillingDedup(ctx context.Context, cutoff time.Time) error {
+	if !CurrentDatabaseDialect().UsesPhysicalRowID() {
+		return r.cleanupUsageBillingDedupByID(ctx, cutoff)
+	}
+
 	for {
-		res, err := r.sql.ExecContext(ctx, `
+		query := `
 			WITH victims AS (
 				SELECT ctid, request_id, api_key_id, request_fingerprint, created_at
 				FROM usage_billing_dedup
@@ -257,7 +275,8 @@ func (r *dashboardAggregationRepository) CleanupUsageBillingDedup(ctx context.Co
 			)
 			DELETE FROM usage_billing_dedup
 			WHERE ctid IN (SELECT ctid FROM victims)
-		`, cutoff.UTC(), usageBillingDedupCleanupBatchSize)
+		`
+		res, err := r.sql.ExecContext(ctx, query, cutoff.UTC(), usageBillingDedupCleanupBatchSize)
 		if err != nil {
 			return err
 		}
@@ -269,6 +288,86 @@ func (r *dashboardAggregationRepository) CleanupUsageBillingDedup(ctx context.Co
 			return nil
 		}
 	}
+}
+
+func (r *dashboardAggregationRepository) cleanupUsageBillingDedupByID(ctx context.Context, cutoff time.Time) error {
+	for {
+		affected, err := r.cleanupUsageBillingDedupByIDBatch(ctx, cutoff)
+		if err != nil {
+			return err
+		}
+		if affected < usageBillingDedupCleanupBatchSize {
+			return nil
+		}
+	}
+}
+
+func (r *dashboardAggregationRepository) cleanupUsageBillingDedupByIDBatch(ctx context.Context, cutoff time.Time) (int64, error) {
+	if db, ok := r.sql.(*sql.DB); ok {
+		tx, err := db.BeginTx(ctx, nil)
+		if err != nil {
+			return 0, err
+		}
+		txRepo := newDashboardAggregationRepositoryWithSQL(tx)
+		affected, err := txRepo.cleanupUsageBillingDedupByIDBatchInTx(ctx, cutoff)
+		if err != nil {
+			_ = tx.Rollback()
+			return 0, err
+		}
+		if err := tx.Commit(); err != nil {
+			return 0, err
+		}
+		return affected, nil
+	}
+	return r.cleanupUsageBillingDedupByIDBatchInTx(ctx, cutoff)
+}
+
+func (r *dashboardAggregationRepository) cleanupUsageBillingDedupByIDBatchInTx(ctx context.Context, cutoff time.Time) (int64, error) {
+	rows, err := r.sql.QueryContext(ctx, `
+		SELECT id
+		FROM usage_billing_dedup
+		WHERE created_at < $1
+		ORDER BY id
+		LIMIT $2
+	`, cutoff.UTC(), usageBillingDedupCleanupBatchSize)
+	if err != nil {
+		return 0, err
+	}
+	defer rows.Close()
+
+	ids := make([]int64, 0, usageBillingDedupCleanupBatchSize)
+	for rows.Next() {
+		var id int64
+		if err := rows.Scan(&id); err != nil {
+			return 0, err
+		}
+		ids = append(ids, id)
+	}
+	if err := rows.Err(); err != nil {
+		return 0, err
+	}
+	if len(ids) == 0 {
+		return 0, nil
+	}
+
+	if _, err := r.sql.ExecContext(ctx, `
+		INSERT INTO usage_billing_dedup_archive (request_id, api_key_id, request_fingerprint, created_at)
+		SELECT request_id, api_key_id, request_fingerprint, created_at
+		FROM usage_billing_dedup
+		WHERE id = ANY($1)
+		ON CONFLICT (request_id, api_key_id) DO NOTHING
+	`, pq.Array(ids)); err != nil {
+		return 0, err
+	}
+
+	res, err := r.sql.ExecContext(ctx, `
+		DELETE FROM usage_billing_dedup
+		WHERE id = ANY($1)
+	`, pq.Array(ids))
+	if err != nil {
+		return 0, err
+	}
+	return res.RowsAffected()
 }
 
 func (r *dashboardAggregationRepository) EnsureUsageLogsPartitions(ctx context.Context, now time.Time) error {
@@ -463,6 +562,10 @@ func (r *dashboardAggregationRepository) upsertDailyAggregates(ctx context.Conte
 }
 
 func (r *dashboardAggregationRepository) isUsageLogsPartitioned(ctx context.Context) (bool, error) {
+	if !CurrentDatabaseDialect().SupportsPostgresPartitionCatalog() {
+		return false, nil
+	}
+
 	query := `
 		SELECT EXISTS(
 			SELECT 1
@@ -479,6 +582,10 @@ func (r *dashboardAggregationRepository) isUsageLogsPartitioned(ctx context.Cont
 }
 
 func (r *dashboardAggregationRepository) dropUsageLogsPartitions(ctx context.Context, cutoff time.Time) error {
+	if !CurrentDatabaseDialect().SupportsPostgresPartitionCatalog() {
+		return nil
+	}
+
 	rows, err := r.sql.QueryContext(ctx, `
 		SELECT c.relname
 		FROM pg_inherits

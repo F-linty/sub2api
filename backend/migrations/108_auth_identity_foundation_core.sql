@@ -7,18 +7,9 @@ UPDATE users
 SET signup_source = 'email'
 WHERE signup_source IS NULL OR signup_source = '';
 
-DO $$
-BEGIN
-    IF NOT EXISTS (
-        SELECT 1
-        FROM pg_constraint
-        WHERE conname = 'users_signup_source_check'
-    ) THEN
-        ALTER TABLE users
-            ADD CONSTRAINT users_signup_source_check
-            CHECK (signup_source IN ('email', 'linuxdo', 'wechat', 'oidc'));
-    END IF;
-END $$;
+ALTER TABLE users
+    ADD CONSTRAINT users_signup_source_check
+    CHECK (signup_source IN ('email', 'linuxdo', 'wechat', 'oidc'));
 
 CREATE TABLE IF NOT EXISTS auth_identities (
     id BIGSERIAL PRIMARY KEY,

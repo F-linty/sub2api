@@ -26,7 +26,7 @@ const props = defineProps<Props>()
 const { t } = useI18n()
 const emit = defineEmits<{
   (e: 'selectPlatform', platform: string): void
-  (e: 'selectGroup', groupId: number): void
+  (e: 'selectGroup', groupId: string | number): void
   (e: 'openDetails'): void
 }>()
 

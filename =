@@ -1,0 +1,6 @@
+NAME            IMAGE                        COMMAND                  SERVICE   CREATED         STATUS                     PORTS
+sub2api         1015flinty/waystation:crdb   "/app/docker-entrypo…"   sub2api   2 minutes ago   Up 2 minutes (unhealthy)   127.0.0.1:8080->8080/tcp
+sub2api-redis   redis:7-alpine               "docker-entrypoint.s…"   redis     3 hours ago     Up 3 hours (healthy)       6379/tcp
+--- health
+
+--- migrations

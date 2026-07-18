@@ -22,7 +22,7 @@ export interface ContentModerationConfig {
   timeout_ms: number
   sample_rate: number
   all_groups: boolean
-  group_ids: number[]
+  group_ids: (string | number)[]
   record_non_hits: boolean
   thresholds: Record<string, number>
   worker_count: number
@@ -98,7 +98,7 @@ export interface UpdateContentModerationConfig {
   timeout_ms?: number
   sample_rate?: number
   all_groups?: boolean
-  group_ids?: number[]
+  group_ids?: (string | number)[]
   record_non_hits?: boolean
   thresholds?: Record<string, number>
   worker_count?: number
@@ -166,13 +166,13 @@ export interface ContentModerationAPIKeyLoad {
 }
 
 export interface ContentModerationLog {
-  id: number
+  id: string | number
   request_id: string
-  user_id: number | null
+  user_id: string | number | null
   user_email: string
-  api_key_id: number | null
+  api_key_id: string | number | null
   api_key_name: string
-  group_id: number | null
+  group_id: string | number | null
   group_name: string
   endpoint: string
   provider: string
@@ -200,7 +200,7 @@ export interface ListContentModerationLogsParams {
   page?: number
   page_size?: number
   result?: string
-  group_id?: number
+  group_id?: string | number
   endpoint?: string
   search?: string
   from?: string
@@ -216,7 +216,7 @@ export interface ContentModerationLogsResponse {
 }
 
 export interface ContentModerationUnbanUserResponse {
-  user_id: number
+  user_id: string | number
   status: string
 }
 
@@ -262,7 +262,7 @@ export async function listLogs(
   return data
 }
 
-export async function unbanUser(userID: number): Promise<ContentModerationUnbanUserResponse> {
+export async function unbanUser(userID: string | number): Promise<ContentModerationUnbanUserResponse> {
   const { data } = await apiClient.post<ContentModerationUnbanUserResponse>(
     `/admin/risk-control/users/${userID}/unban`
   )

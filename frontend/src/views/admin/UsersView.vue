@@ -760,7 +760,7 @@ import Icon from '@/components/icons/Icon.vue'
 
 const { t } = useI18n()
 import { adminAPI } from '@/api/admin'
-import type { AdminUser, AdminGroup, UserAttributeDefinition } from '@/types'
+import type { AdminUser, AdminGroup, EntityID, UserAttributeDefinition } from '@/types'
 import type { BatchUserUsageStats } from '@/api/admin/dashboard'
 import type { PlatformQuotaItem } from '@/api/admin/users'
 import type { Column } from '@/components/common/types'
@@ -802,14 +802,14 @@ const attributeColumns = computed<Column[]>(() =>
 )
 
 // Get formatted attribute value for display in table
-const getAttributeValue = (userId: number, attrId: number): string => {
+const getAttributeValue = (userId: string | number, attrId: EntityID): string => {
   const userAttrs = userAttributeValues.value[userId]
   if (!userAttrs) return '-'
   const value = userAttrs[attrId]
   if (!value) return '-'
 
   // Find definition for this attribute
-  const def = attributeDefinitions.value.find(d => d.id === attrId)
+  const def = attributeDefinitions.value.find(d => String(d.id) === String(attrId))
   if (!def) return value
 
   // Format based on type
@@ -889,7 +889,7 @@ const HIDDEN_COLUMNS_KEY = 'user-hidden-columns'
 // 这样老用户升级后这些新列会被自动隐藏一次，而不会影响他们对其它老列的偏好。
 const COLUMN_SETTINGS_VERSION_KEY = 'user-column-settings-version'
 const COLUMN_SETTINGS_VERSION = 3
-const VERSION_NEW_HIDDEN_COLUMNS: Record<number, string[]> = {
+const VERSION_NEW_HIDDEN_COLUMNS: Record<string | number, string[]> = {
   2: ['usage_anthropic', 'usage_openai', 'usage_gemini', 'usage_antigravity'],
   3: ['balance_platform_quota']
 }
@@ -1089,7 +1089,7 @@ const filters = reactive({
   group: '',  // group name for fuzzy match, '' = all
   apiKeyGroup: null as number | null  // group id bound to the user's API keys, null = all
 })
-const activeAttributeFilters = reactive<Record<number, string>>({})
+const activeAttributeFilters = reactive<Record<string | number, string>>({})
 
 // Visible filters tracking (which filters are shown in the UI)
 // Keys: 'role', 'status', 'attr_${id}'
@@ -1166,13 +1166,13 @@ const saveFiltersToStorage = () => {
 }
 
 // Get attribute definition by ID
-const getAttributeDefinition = (attrId: number): UserAttributeDefinition | undefined => {
-  return attributeDefinitions.value.find(d => d.id === attrId)
+const getAttributeDefinition = (attrId: EntityID): UserAttributeDefinition | undefined => {
+  return attributeDefinitions.value.find(d => String(d.id) === String(attrId))
 }
 const usageStats = ref<Record<string, BatchUserUsageStats>>({})
-const platformQuotaStats = ref<Record<number, PlatformQuotaItem[]>>({})
+const platformQuotaStats = ref<Record<string | number, PlatformQuotaItem[]>>({})
 
-const getPlatformUsage = (userId: number, platform: string) =>
+const getPlatformUsage = (userId: string | number, platform: string) =>
   usageStats.value[userId]?.by_platform?.find((p) => p.platform === platform)
 
 // 用量列前端排序：DataTable 工作在 server-side-sort 模式，所有 sortable
@@ -1240,7 +1240,7 @@ const toggleUsageSortMenu = (key: string) => {
   openUsageSortMenu.value = openUsageSortMenu.value === key ? null : key
 }
 
-const getUsageValue = (userId: number, key: string, metric: UsageMetric): number => {
+const getUsageValue = (userId: string | number, key: string, metric: UsageMetric): number => {
   const stats = usageStats.value[userId]
   if (!stats) return 0
   const platform = USAGE_COLUMN_PLATFORMS[key]
@@ -1270,7 +1270,7 @@ const sortedUsers = computed(() => {
 
 // User attribute definitions and values
 const attributeDefinitions = ref<UserAttributeDefinition[]>([])
-const userAttributeValues = ref<Record<number, Record<number, string>>>({})
+const userAttributeValues = ref<Record<string | number, Record<string | number, string>>>({})
 const pagination = reactive({
   page: 1,
   page_size: getPersistedPageSize(),
@@ -1302,7 +1302,7 @@ let abortController: AbortController | null = null
 let secondaryDataSeq = 0
 
 const loadUsersSecondaryData = async (
-  userIds: number[],
+  userIds: (string | number)[],
   signal?: AbortSignal,
   expectedSeq?: number
 ) => {
@@ -1386,7 +1386,7 @@ const refreshCurrentPageSecondaryData = () => {
 }
 
 // Action Menu State
-const activeMenuId = ref<number | null>(null)
+const activeMenuId = ref<string | number | null>(null)
 const menuPosition = ref<{ top: number; left: number } | null>(null)
 
 const openActionMenu = (user: AdminUser, e: MouseEvent) => {
@@ -1476,15 +1476,15 @@ const showAllowedGroupsModal = ref(false)
 const allowedGroupsUser = ref<AdminUser | null>(null)
 
 // Expanded group dropdown state (click to show exclusive groups list)
-const expandedGroupUserId = ref<number | null>(null)
-const toggleExpandedGroup = (userId: number) => {
+const expandedGroupUserId = ref<string | number | null>(null)
+const toggleExpandedGroup = (userId: string | number) => {
   expandedGroupUserId.value = expandedGroupUserId.value === userId ? null : userId
 }
 
 // Group replace modal state
 const showGroupReplaceModal = ref(false)
 const groupReplaceUser = ref<AdminUser | null>(null)
-const groupReplaceOldGroup = ref<{ id: number; name: string } | null>(null)
+const groupReplaceOldGroup = ref<{ id: string | number; name: string } | null>(null)
 
 // Balance (Deposit/Withdraw) modal state
 const showBalanceModal = ref(false)
@@ -1526,7 +1526,7 @@ const loadUsers = async () => {
   loading.value = true
   try {
     // Build attribute filters from active filters
-    const attrFilters: Record<number, string> = {}
+    const attrFilters: Record<string | number, string> = {}
     for (const [attrId, value] of Object.entries(activeAttributeFilters)) {
       if (value) {
         attrFilters[Number(attrId)] = value
@@ -1615,8 +1615,8 @@ const handleSort = (key: string, order: 'asc' | 'desc') => {
 }
 
 // Filter helpers
-const getAttributeDefinitionName = (attrId: number): string => {
-  const def = attributeDefinitions.value.find(d => d.id === attrId)
+const getAttributeDefinitionName = (attrId: EntityID): string => {
+  const def = attributeDefinitions.value.find(d => String(d.id) === String(attrId))
   return def?.name || String(attrId)
 }
 
@@ -1707,7 +1707,7 @@ const closeAllowedGroupsModal = () => {
   allowedGroupsUser.value = null
 }
 
-const openGroupReplace = (user: AdminUser, group: { id: number; name: string }) => {
+const openGroupReplace = (user: AdminUser, group: { id: string | number; name: string }) => {
   expandedGroupUserId.value = null
   groupReplaceUser.value = user
   groupReplaceOldGroup.value = group

@@ -1,6 +1,10 @@
 package service
 
-import "time"
+import (
+	"encoding/json"
+	"strconv"
+	"time"
+)
 
 // Ops alert rule/event models.
 //
@@ -72,6 +76,45 @@ type OpsAlertSilence struct {
 
 	CreatedBy *int64    `json:"created_by,omitempty"`
 	CreatedAt time.Time `json:"created_at"`
+}
+
+// MarshalJSON keeps database BIGINT identifiers exact in JavaScript clients.
+// CockroachDB may generate IDs that exceed Number.MAX_SAFE_INTEGER.
+func (r OpsAlertRule) MarshalJSON() ([]byte, error) {
+	type alias OpsAlertRule
+	return json.Marshal(struct {
+		ID string `json:"id"`
+		*alias
+	}{
+		ID:    strconv.FormatInt(r.ID, 10),
+		alias: (*alias)(&r),
+	})
+}
+
+func (e OpsAlertEvent) MarshalJSON() ([]byte, error) {
+	type alias OpsAlertEvent
+	return json.Marshal(struct {
+		ID     string `json:"id"`
+		RuleID string `json:"rule_id"`
+		*alias
+	}{
+		ID:     strconv.FormatInt(e.ID, 10),
+		RuleID: strconv.FormatInt(e.RuleID, 10),
+		alias:  (*alias)(&e),
+	})
+}
+
+func (s OpsAlertSilence) MarshalJSON() ([]byte, error) {
+	type alias OpsAlertSilence
+	return json.Marshal(struct {
+		ID     string `json:"id"`
+		RuleID string `json:"rule_id"`
+		*alias
+	}{
+		ID:     strconv.FormatInt(s.ID, 10),
+		RuleID: strconv.FormatInt(s.RuleID, 10),
+		alias:  (*alias)(&s),
+	})
 }
 
 type OpsAlertEventFilter struct {

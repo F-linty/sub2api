@@ -21,13 +21,13 @@ interface Props {
   timeRange: string
   preset: OpsRequestDetailsPreset
   platform?: string
-  groupId?: number | null
+  groupId?: string | number | null
 }
 
 const props = defineProps<Props>()
 const emit = defineEmits<{
   (e: 'update:modelValue', value: boolean): void
-  (e: 'openErrorDetail', errorId: number): void
+  (e: 'openErrorDetail', errorId: string | number): void
 }>()
 
 const { t } = useI18n()
@@ -136,7 +136,7 @@ async function handleCopyRequestId(requestId: string) {
   appStore.showWarning(t('admin.ops.requestDetails.copyFailed'))
 }
 
-function openErrorDetail(errorId: number | null | undefined) {
+function openErrorDetail(errorId: string | number | null | undefined) {
   if (!errorId) return
   close()
   emit('openErrorDetail', errorId)

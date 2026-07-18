@@ -4,8 +4,6 @@
 -- All columns are nullable with no default to preserve backward compatibility
 -- with existing rows.
 
-SET LOCAL lock_timeout = '5s';
-SET LOCAL statement_timeout = '10min';
 
 -- 1) Standardized endpoint paths (analogous to usage_logs.inbound_endpoint / upstream_endpoint)
 ALTER TABLE ops_error_logs

@@ -7,31 +7,7 @@ ALTER TABLE usage_logs
 ALTER TABLE usage_logs
     ADD COLUMN IF NOT EXISTS cache_creation_1h_tokens INT NOT NULL DEFAULT 0;
 
-DO $$
-BEGIN
-    IF EXISTS (
-        SELECT 1
-        FROM information_schema.columns
-        WHERE table_schema = 'public'
-          AND table_name = 'usage_logs'
-          AND column_name = 'cache_creation5m_tokens'
-    ) THEN
-        UPDATE usage_logs
-        SET cache_creation_5m_tokens = cache_creation5m_tokens
-        WHERE cache_creation_5m_tokens = 0
-          AND cache_creation5m_tokens <> 0;
-    END IF;
-
-    IF EXISTS (
-        SELECT 1
-        FROM information_schema.columns
-        WHERE table_schema = 'public'
-          AND table_name = 'usage_logs'
-          AND column_name = 'cache_creation1h_tokens'
-    ) THEN
-        UPDATE usage_logs
-        SET cache_creation_1h_tokens = cache_creation1h_tokens
-        WHERE cache_creation_1h_tokens = 0
-          AND cache_creation1h_tokens <> 0;
-    END IF;
-END $$;
+-- CockroachDB compatibility:
+-- The legacy non-underscored columns are not present on a fresh Sub2API schema.
+-- Conditional backfill from optional columns would require PostgreSQL DO blocks,
+-- so it is intentionally skipped for CockroachDB fresh installs.

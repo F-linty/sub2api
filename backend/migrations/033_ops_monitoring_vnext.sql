@@ -20,8 +20,6 @@
 -- 030_ops_drop_legacy_ops_tables.sql
 -- =====================================================================
 
-SET LOCAL lock_timeout = '5s';
-SET LOCAL statement_timeout = '10min';
 
 -- Legacy pre-aggregation tables (from 026 and/or previous branches)
 DROP TABLE IF EXISTS ops_metrics_daily CASCADE;
@@ -59,8 +57,6 @@ DROP VIEW IF EXISTS ops_latest_metrics CASCADE;
 -- - This migration is idempotent.
 -- - ops_* tables intentionally avoid strict foreign keys to reduce write amplification/locks.
 
-SET LOCAL lock_timeout = '5s';
-SET LOCAL statement_timeout = '10min';
 
 -- ============================================
 -- 1) ops_error_logs: error log details (high-write)
@@ -332,8 +328,6 @@ CREATE INDEX IF NOT EXISTS idx_ops_alert_events_fired_at
 -- - We keep a single table with nullable platform/group_id, and enforce uniqueness via a
 --   COALESCE-based unique index (because UNIQUE with NULLs allows duplicates in Postgres).
 
-SET LOCAL lock_timeout = '5s';
-SET LOCAL statement_timeout = '10min';
 
 -- ============================================
 -- 1) ops_metrics_hourly
@@ -460,8 +454,6 @@ COMMENT ON TABLE ops_metrics_daily IS 'vNext daily pre-aggregated ops metrics (o
 -- This migration intentionally keeps "optional" objects (like pg_trgm) best-effort,
 -- so environments without extension privileges won't fail the whole migration chain.
 
-SET LOCAL lock_timeout = '5s';
-SET LOCAL statement_timeout = '10min';
 
 -- ============================================
 -- 1) Core btree indexes (always safe)
@@ -526,30 +518,11 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_ops_retry_attempts_unique_active
     WHERE source_error_id IS NOT NULL AND status IN ('queued', 'running');
 
 -- ============================================
--- 2) Optional: pg_trgm + trigram indexes for fuzzy search
+-- 2) Optional fuzzy-search indexes
 -- ============================================
-
-DO $$
-BEGIN
-  BEGIN
-    CREATE EXTENSION IF NOT EXISTS pg_trgm;
-  EXCEPTION WHEN OTHERS THEN
-    -- Missing privileges or extension package should not block migrations.
-    RAISE NOTICE 'pg_trgm extension not created: %', SQLERRM;
-  END;
-
-  IF EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'pg_trgm') THEN
-    -- request_id / client_request_id fuzzy search
-    EXECUTE 'CREATE INDEX IF NOT EXISTS idx_ops_error_logs_request_id_trgm
-             ON ops_error_logs USING gin (request_id gin_trgm_ops)';
-    EXECUTE 'CREATE INDEX IF NOT EXISTS idx_ops_error_logs_client_request_id_trgm
-             ON ops_error_logs USING gin (client_request_id gin_trgm_ops)';
-
-    -- error_message fuzzy search
-    EXECUTE 'CREATE INDEX IF NOT EXISTS idx_ops_error_logs_error_message_trgm
-             ON ops_error_logs USING gin (error_message gin_trgm_ops)';
-  END IF;
-END $$;
+-- CockroachDB compatibility:
+-- PostgreSQL pg_trgm and gin_trgm_ops indexes are unavailable, so skip them.
+SELECT 1;
 
 -- =====================================================================
 -- 034_ops_preaggregation_add_avg_max.sql
@@ -567,8 +540,6 @@ END $$;
 -- NOTE: We keep the existing p50/p90/p95/p99 columns as-is; these are still used for
 --       approximate long-window summaries.
 
-SET LOCAL lock_timeout = '5s';
-SET LOCAL statement_timeout = '10min';
 
 -- Hourly table
 ALTER TABLE ops_metrics_hourly
@@ -593,8 +564,6 @@ ALTER TABLE ops_metrics_daily
 -- Adds notify_email flag to ops_alert_rules to keep UI parity with the backup Ops dashboard.
 -- Migration is idempotent.
 
-SET LOCAL lock_timeout = '5s';
-SET LOCAL statement_timeout = '10min';
 
 ALTER TABLE ops_alert_rules
     ADD COLUMN IF NOT EXISTS notify_email BOOLEAN NOT NULL DEFAULT true;
@@ -615,8 +584,6 @@ ALTER TABLE ops_alert_rules
 --   - success_rate / error_rate are based on SLA-scope counts (exclude is_business_limited).
 --   - upstream_error_rate excludes 429/529.
 
-SET LOCAL lock_timeout = '5s';
-SET LOCAL statement_timeout = '10min';
 
 -- 1) High error rate (P1)
 INSERT INTO ops_alert_rules (

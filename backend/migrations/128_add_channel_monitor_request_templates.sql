@@ -39,31 +39,15 @@ ALTER TABLE channel_monitors
 ALTER TABLE channel_monitors
     ADD COLUMN IF NOT EXISTS body_override      JSONB       NULL;
 
--- 约束 + 外键（DO 块里 IF NOT EXISTS 判断，保证幂等）
-DO $$
-BEGIN
-    IF NOT EXISTS (
-        SELECT 1 FROM information_schema.table_constraints
-        WHERE constraint_name = 'channel_monitors_body_mode_check'
-          AND table_name = 'channel_monitors'
-    ) THEN
-        ALTER TABLE channel_monitors
-            ADD CONSTRAINT channel_monitors_body_mode_check
-            CHECK (body_override_mode IN ('off', 'merge', 'replace'));
-    END IF;
+ALTER TABLE channel_monitors
+    ADD CONSTRAINT channel_monitors_body_mode_check
+    CHECK (body_override_mode IN ('off', 'merge', 'replace'));
 
-    IF NOT EXISTS (
-        SELECT 1 FROM information_schema.table_constraints
-        WHERE constraint_name = 'channel_monitors_template_id_fkey'
-          AND table_name = 'channel_monitors'
-    ) THEN
-        ALTER TABLE channel_monitors
-            ADD CONSTRAINT channel_monitors_template_id_fkey
-            FOREIGN KEY (template_id)
-            REFERENCES channel_monitor_request_templates (id)
-            ON DELETE SET NULL;
-    END IF;
-END $$;
+ALTER TABLE channel_monitors
+    ADD CONSTRAINT channel_monitors_template_id_fkey
+    FOREIGN KEY (template_id)
+    REFERENCES channel_monitor_request_templates (id)
+    ON DELETE SET NULL;
 
 CREATE INDEX IF NOT EXISTS idx_channel_monitors_template_id
     ON channel_monitors (template_id)

@@ -36,7 +36,7 @@ export function useGeminiOAuth() {
   }
 
   const generateAuthUrl = async (
-    proxyId: number | null | undefined,
+    proxyId: string | number | null | undefined,
     projectId?: string | null,
     oauthType?: string,
     tierId?: string
@@ -74,7 +74,7 @@ export function useGeminiOAuth() {
     code: string
     sessionId: string
     state: string
-    proxyId?: number | null
+    proxyId?: string | number | null
     oauthType?: string
     tierId?: string
   }): Promise<GeminiTokenInfo | null> => {

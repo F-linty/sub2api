@@ -669,8 +669,8 @@ async function loadWebSearchGlobalState() {
 // ── Form-level pricing rule type (per-platform) ──
 interface FormPricingRule {
   name: string
-  group_ids: number[]
-  account_ids: number[]
+  group_ids: (string | number)[]
+  account_ids: string[]
   pricing: PricingFormEntry[]
 }
 
@@ -679,7 +679,7 @@ interface PlatformSection {
   platform: GroupPlatform
   enabled: boolean
   collapsed: boolean
-  group_ids: number[]
+  group_ids: (string | number)[]
   model_mapping: Record<string, string>
   model_pricing: PricingFormEntry[]
   web_search_emulation: boolean
@@ -804,7 +804,7 @@ function getGroupsForPlatform(platform: GroupPlatform): AdminGroup[] {
 
 // ── Group helpers ──
 const groupToChannelMap = computed(() => {
-  const map = new Map<number, Channel>()
+  const map = new Map<string | number, Channel>()
   for (const ch of allChannelsForConflict.value) {
     if (editingChannel.value && ch.id === editingChannel.value.id) continue
     for (const gid of ch.group_ids || []) {
@@ -814,15 +814,15 @@ const groupToChannelMap = computed(() => {
   return map
 })
 
-function isGroupInOtherChannel(groupId: number, _platform: string): boolean {
+function isGroupInOtherChannel(groupId: string | number, _platform: string): boolean {
   return groupToChannelMap.value.has(groupId)
 }
 
-function getGroupChannelName(groupId: number): string {
+function getGroupChannelName(groupId: string | number): string {
   return groupToChannelMap.value.get(groupId)?.name || ''
 }
 
-function getGroupInOtherChannelLabel(groupId: number): string {
+function getGroupInOtherChannelLabel(groupId: string | number): string {
   const name = getGroupChannelName(groupId)
   return t('admin.channels.form.inOtherChannel', { name }, `In "${name}"`)
 }
@@ -836,7 +836,7 @@ const deleteConfirmMessage = computed(() => {
   )
 })
 
-function toggleGroupInSection(sectionIdx: number, groupId: number) {
+function toggleGroupInSection(sectionIdx: number, groupId: string | number) {
   const section = form.platforms[sectionIdx]
   const idx = section.group_ids.indexOf(groupId)
   if (idx >= 0) {
@@ -968,19 +968,19 @@ function removeRulePricingEntry(sectionIdx: number, ruleIndex: number, pricingIn
   form.platforms[sectionIdx].account_stats_pricing_rules[ruleIndex].pricing.splice(pricingIndex, 1)
 }
 
-function getGroupNameById(groupId: number): string {
+function getGroupNameById(groupId: string | number): string {
   const group = allGroups.value.find(g => g.id === groupId)
   return group ? group.name : `#${groupId}`
 }
 
 // ── Account search for pricing rules ──
-interface SimpleAccount { id: number; name: string; platform: string }
+interface SimpleAccount { id: string; name: string; platform: string }
 
 const ruleAccountSearchKeyword = ref<Record<string, string>>({})
 const ruleAccountSearchResults = ref<Record<string, SimpleAccount[]>>({})
 const showRuleAccountDropdown = ref<Record<string, boolean>>({})
 // Cache: account ID → name, populated when search results are selected
-const ruleAccountNameCache = ref<Record<number, string>>({})
+const ruleAccountNameCache = ref<Record<string, string>>({})
 
 const ruleAccountSearchRunner = useKeyedDebouncedSearch<SimpleAccount[]>({
   delay: 300,
@@ -1008,7 +1008,7 @@ function onRuleAccountSearchFocus(platform: string, ruleIndex: number) {
 }
 
 function selectRuleAccount(
-  rule: { account_ids: number[] },
+  rule: { account_ids: string[] },
   account: SimpleAccount,
   platform: string,
   ruleIndex: number,
@@ -1022,12 +1022,12 @@ function selectRuleAccount(
   showRuleAccountDropdown.value[key] = false
 }
 
-function removeRuleAccount(rule: { account_ids: number[] }, accountId: number) {
+function removeRuleAccount(rule: { account_ids: string[] }, accountId: string) {
   const idx = rule.account_ids.indexOf(accountId)
   if (idx !== -1) rule.account_ids.splice(idx, 1)
 }
 
-function getRuleAccountLabel(accountId: number): string {
+function getRuleAccountLabel(accountId: string): string {
   const name = ruleAccountNameCache.value[accountId]
   return name ? `${name} #${accountId}` : `#${accountId}`
 }
@@ -1077,8 +1077,8 @@ function accountStatsRulesToAPI(): AccountStatsPricingRule[] {
 }
 
 // ── Form ↔ API conversion ──
-function formToAPI(): { group_ids: number[], model_pricing: ChannelModelPricing[], model_mapping: Record<string, Record<string, string>>, features_config: Record<string, unknown> } {
-  const group_ids: number[] = []
+function formToAPI(): { group_ids: (string | number)[], model_pricing: ChannelModelPricing[], model_mapping: Record<string, Record<string, string>>, features_config: Record<string, unknown> } {
+  const group_ids: (string | number)[] = []
   const model_pricing: ChannelModelPricing[] = []
   const model_mapping: Record<string, Record<string, string>> = {}
   // Preserve existing features_config fields not managed by the form
@@ -1160,7 +1160,7 @@ function formToAPI(): { group_ids: number[], model_pricing: ChannelModelPricing[
 
 function apiToForm(channel: Channel): PlatformSection[] {
   // Build a map: groupID → platform
-  const groupPlatformMap = new Map<number, GroupPlatform>()
+  const groupPlatformMap = new Map<string | number, GroupPlatform>()
   for (const g of allGroups.value) {
     groupPlatformMap.set(g.id, g.platform)
   }
@@ -1348,7 +1348,7 @@ async function openEditDialog(channel: Channel) {
 /** Distribute flat channel-level rules into the matching platform section based on group_ids */
 function distributeRulesToPlatforms(apiRules: AccountStatsPricingRule[]) {
   // Build groupID → platform lookup
-  const groupPlatformMap = new Map<number, GroupPlatform>()
+  const groupPlatformMap = new Map<string | number, GroupPlatform>()
   for (const g of allGroups.value) {
     groupPlatformMap.set(g.id, g.platform)
   }
@@ -1393,7 +1393,7 @@ function distributeRulesToPlatforms(apiRules: AccountStatsPricingRule[]) {
 
 /** Populate ruleAccountNameCache by fetching account details for all account_ids in rules */
 async function populateRuleAccountNameCache() {
-  const allAccountIds = new Set<number>()
+  const allAccountIds = new Set<string>()
   for (const section of form.platforms) {
     for (const rule of section.account_stats_pricing_rules) {
       for (const id of rule.account_ids) {

@@ -138,7 +138,7 @@ import wxpayIcon from '@/assets/icons/wxpay.svg'
 import paymentIcon from '@/assets/icons/payment.svg'
 
 const props = defineProps<{
-  orderId: number
+  orderId: string | number
   qrCode: string
   expiresAt: string
   paymentType: string

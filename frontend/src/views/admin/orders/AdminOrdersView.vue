@@ -134,7 +134,7 @@ import OrderTable from '@/components/payment/OrderTable.vue'
 import { currencySymbol } from '@/components/payment/currency'
 
 interface AuditLog {
-  id: number
+  id: string | number
   action: string
   detail: string | null
   operator: string | null
@@ -153,7 +153,7 @@ const selectedOrder = ref<PaymentOrder | null>(null)
 const showDetailDialog = ref(false)
 const showRefundDialog = ref(false)
 const refundSubmitting = ref(false)
-const refundQueryingIds = ref(new Set<number>())
+const refundQueryingIds = ref(new Set<string | number>())
 const orderAuditLogs = ref<AuditLog[]>([])
 const creditedAmountSymbol = currencySymbol('USD')
 

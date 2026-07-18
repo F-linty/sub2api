@@ -21,7 +21,7 @@ func UserFromServiceShallow(u *service.User) *User {
 		FrozenBalance:              u.FrozenBalance,
 		Concurrency:                u.Concurrency,
 		Status:                     u.Status,
-		AllowedGroups:              u.AllowedGroups,
+		AllowedGroups:              int64SliceToStringSlice(u.AllowedGroups),
 		LastActiveAt:               u.LastActiveAt,
 		CreatedAt:                  u.CreatedAt,
 		UpdatedAt:                  u.UpdatedAt,
@@ -146,7 +146,7 @@ func GroupFromServiceAdmin(g *service.Group) *AdminGroup {
 	}
 	out := &AdminGroup{
 		Group:                       groupFromServiceBase(g),
-		ModelRouting:                g.ModelRouting,
+		ModelRouting:                int64SliceMapToStringSliceMap(g.ModelRouting),
 		ModelRoutingEnabled:         g.ModelRoutingEnabled,
 		MCPXMLInject:                g.MCPXMLInject,
 		DefaultMappedModel:          g.DefaultMappedModel,
@@ -249,7 +249,7 @@ func AccountFromServiceShallow(a *service.Account) *Account {
 		SessionWindowStart:      a.SessionWindowStart,
 		SessionWindowEnd:        a.SessionWindowEnd,
 		SessionWindowStatus:     a.SessionWindowStatus,
-		GroupIDs:                a.GroupIDs,
+		GroupIDs:                int64SliceToStringSlice(a.GroupIDs),
 		ParentAccountID:         a.ParentAccountID,
 		QuotaDimension:          a.QuotaDimension,
 	}
@@ -380,6 +380,28 @@ func AccountFromServiceShallow(a *service.Account) *Account {
 		}
 	}
 
+	return out
+}
+
+func int64SliceToStringSlice(values []int64) []string {
+	if values == nil {
+		return nil
+	}
+	out := make([]string, 0, len(values))
+	for _, value := range values {
+		out = append(out, strconv.FormatInt(value, 10))
+	}
+	return out
+}
+
+func int64SliceMapToStringSliceMap(values map[string][]int64) map[string][]string {
+	if values == nil {
+		return nil
+	}
+	out := make(map[string][]string, len(values))
+	for key, ids := range values {
+		out[key] = int64SliceToStringSlice(ids)
+	}
 	return out
 }
 

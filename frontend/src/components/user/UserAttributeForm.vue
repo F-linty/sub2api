@@ -94,11 +94,11 @@
 <script setup lang="ts">
 import { ref, watch, onMounted } from 'vue'
 import { adminAPI } from '@/api/admin'
-import type { UserAttributeDefinition, UserAttributeValuesMap } from '@/types'
+import type { EntityID, UserAttributeDefinition, UserAttributeValuesMap } from '@/types'
 import Select from '@/components/common/Select.vue'
 
 interface Props {
-  userId?: number
+  userId?: string | number
   modelValue: UserAttributeValuesMap
 }
 
@@ -144,7 +144,7 @@ const emitChange = () => {
   emit('update:modelValue', { ...localValues.value })
 }
 
-const isOptionSelected = (attrId: number, optionValue: string): boolean => {
+const isOptionSelected = (attrId: EntityID, optionValue: string): boolean => {
   const value = localValues.value[attrId]
   if (!value) return false
   try {
@@ -155,7 +155,7 @@ const isOptionSelected = (attrId: number, optionValue: string): boolean => {
   }
 }
 
-const toggleMultiSelectOption = (attrId: number, optionValue: string) => {
+const toggleMultiSelectOption = (attrId: EntityID, optionValue: string) => {
   let arr: string[] = []
   const value = localValues.value[attrId]
   if (value) {

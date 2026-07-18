@@ -22,20 +22,22 @@ import type { Virtualizer } from '@tanstack/vue-virtual'
  * Wrap <DataTable> with <div ref="containerRef">...</div>
  * DataTable rows must have data-row-id attribute.
  */
-export interface SwipeSelectAdapter {
-  isSelected: (id: number) => boolean
-  select: (id: number) => void
-  deselect: (id: number) => void
-  batchUpdate?: (updater: (draft: Set<number>) => void) => void
+type SwipeSelectId = string | number
+
+export interface SwipeSelectAdapter<ID extends SwipeSelectId = number> {
+  isSelected: (id: ID) => boolean
+  select: (id: ID) => void
+  deselect: (id: ID) => void
+  batchUpdate?: (updater: (draft: Set<ID>) => void) => void
 }
 
-export interface SwipeSelectVirtualContext {
+export interface SwipeSelectVirtualContext<ID extends SwipeSelectId = number> {
   /** Get the virtualizer instance */
   getVirtualizer: () => Virtualizer<HTMLElement, Element> | null
   /** Get all sorted data */
   getSortedData: () => any[]
   /** Get row ID from data row */
-  getRowId: (row: any, index: number) => number
+  getRowId: (row: any, index: number) => ID
 }
 
 /**
@@ -73,10 +75,10 @@ export function findRowIndexByDomPosition(scrollEl: Element, clientY: number): n
   return (clientY - rHi.bottom < rLo.top - clientY) ? idxOf(domRows[hi]) : idxOf(domRows[lo])
 }
 
-export function useSwipeSelect(
+export function useSwipeSelect<ID extends SwipeSelectId = number>(
   containerRef: Ref<HTMLElement | null>,
-  adapter: SwipeSelectAdapter,
-  virtualContext?: SwipeSelectVirtualContext
+  adapter: SwipeSelectAdapter<ID>,
+  virtualContext?: SwipeSelectVirtualContext<ID>
 ) {
   const isDragging = ref(false)
 
@@ -86,7 +88,7 @@ export function useSwipeSelect(
   let startY = 0
   let lastMouseY = 0
   let pendingStartY = 0
-  let initialSelectedSnapshot = new Map<number, boolean>()
+  let initialSelectedSnapshot = new Map<ID, boolean>()
   let cachedRows: HTMLElement[] = []
   let marqueeEl: HTMLDivElement | null = null
   let cachedScrollParent: HTMLElement | null = null
@@ -107,11 +109,11 @@ export function useSwipeSelect(
     return Array.from(container.querySelectorAll('tbody tr[data-row-id]'))
   }
 
-  function getRowId(el: HTMLElement): number | null {
+  function getRowId(el: HTMLElement): ID | null {
     const raw = el.getAttribute('data-row-id')
     if (raw === null) return null
     const id = Number(raw)
-    return Number.isFinite(id) ? id : null
+    return (Number.isFinite(id) ? id : raw) as ID
   }
 
   /** Find the row index closest to a viewport Y coordinate (binary search). */

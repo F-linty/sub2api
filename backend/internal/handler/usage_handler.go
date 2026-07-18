@@ -1,6 +1,8 @@
 package handler
 
 import (
+	"encoding/json"
+	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -611,7 +613,43 @@ func parseBoolQueryWithDefault(c *gin.Context, key string, fallback bool) (bool,
 
 // BatchAPIKeysUsageRequest represents the request for batch API keys usage
 type BatchAPIKeysUsageRequest struct {
-	APIKeyIDs []int64 `json:"api_key_ids" binding:"required"`
+	APIKeyIDs jsonInt64Slice `json:"api_key_ids" binding:"required"`
+}
+
+type jsonInt64Slice []int64
+
+func (s *jsonInt64Slice) UnmarshalJSON(data []byte) error {
+	var raw []json.RawMessage
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return err
+	}
+	out := make([]int64, 0, len(raw))
+	for _, item := range raw {
+		var n int64
+		if err := json.Unmarshal(item, &n); err == nil {
+			out = append(out, n)
+			continue
+		}
+		var text string
+		if err := json.Unmarshal(item, &text); err != nil {
+			return err
+		}
+		text = strings.TrimSpace(text)
+		if text == "" {
+			return fmt.Errorf("empty int64 id")
+		}
+		n, err := strconv.ParseInt(text, 10, 64)
+		if err != nil {
+			return fmt.Errorf("invalid int64 id %q: %w", text, err)
+		}
+		out = append(out, n)
+	}
+	*s = out
+	return nil
+}
+
+func (s jsonInt64Slice) Int64s() []int64 {
+	return []int64(s)
 }
 
 // DashboardAPIKeysUsage handles getting usage stats for user's own API keys
@@ -629,18 +667,19 @@ func (h *UsageHandler) DashboardAPIKeysUsage(c *gin.Context) {
 		return
 	}
 
-	if len(req.APIKeyIDs) == 0 {
+	apiKeyIDs := req.APIKeyIDs.Int64s()
+	if len(apiKeyIDs) == 0 {
 		response.Success(c, gin.H{"stats": map[string]any{}})
 		return
 	}
 
 	// Limit the number of API key IDs to prevent SQL parameter overflow
-	if len(req.APIKeyIDs) > 100 {
+	if len(apiKeyIDs) > 100 {
 		response.BadRequest(c, "Too many API key IDs (maximum 100 allowed)")
 		return
 	}
 
-	validAPIKeyIDs, err := h.apiKeyService.VerifyOwnership(c.Request.Context(), subject.UserID, req.APIKeyIDs)
+	validAPIKeyIDs, err := h.apiKeyService.VerifyOwnership(c.Request.Context(), subject.UserID, apiKeyIDs)
 	if err != nil {
 		response.ErrorFrom(c, err)
 		return

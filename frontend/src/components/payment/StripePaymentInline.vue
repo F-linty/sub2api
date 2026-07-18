@@ -79,7 +79,7 @@ import Icon from '@/components/icons/Icon.vue'
 const POPUP_METHODS = new Set(['alipay', 'wechat_pay'])
 
 const props = defineProps<{
-  orderId: number
+  orderId: string | number
   amount: number
   clientSecret: string
   orderType?: 'balance' | 'subscription'
@@ -88,7 +88,7 @@ const props = defineProps<{
   currency?: string
 }>()
 
-const emit = defineEmits<{ success: []; done: []; back: []; redirect: [orderId: number, payUrl: string] }>()
+const emit = defineEmits<{ success: []; done: []; back: []; redirect: [orderId: string | number, payUrl: string] }>()
 
 const { t } = useI18n()
 const router = useRouter()

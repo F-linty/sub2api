@@ -27,7 +27,7 @@ type CodexSessionImportRequest struct {
 	Name                    string         `json:"name"`
 	Notes                   *string        `json:"notes"`
 	GroupIDs                []int64        `json:"group_ids"`
-	ProxyID                 *int64         `json:"proxy_id"`
+	ProxyID                 *jsonInt64     `json:"proxy_id"`
 	Concurrency             *int           `json:"concurrency"`
 	Priority                *int           `json:"priority"`
 	RateMultiplier          *float64       `json:"rate_multiplier"`
@@ -281,7 +281,7 @@ func (h *AccountHandler) importCodexSessions(ctx context.Context, req CodexSessi
 				AutoPauseOnExpired: autoPauseOnExpired,
 			}
 			if req.ProxyID != nil {
-				updateInput.ProxyID = req.ProxyID
+				updateInput.ProxyID = jsonInt64Ptr(req.ProxyID)
 			}
 			if len(req.GroupIDs) > 0 {
 				groupIDs := append([]int64(nil), req.GroupIDs...)
@@ -329,7 +329,7 @@ func (h *AccountHandler) importCodexSessions(ctx context.Context, req CodexSessi
 			Type:                  service.AccountTypeOAuth,
 			Credentials:           credentials,
 			Extra:                 extra,
-			ProxyID:               req.ProxyID,
+			ProxyID:               jsonInt64Ptr(req.ProxyID),
 			Concurrency:           concurrency,
 			Priority:              priority,
 			RateMultiplier:        req.RateMultiplier,

@@ -173,7 +173,8 @@ import type {
   AnnouncementCondition,
   AnnouncementConditionGroup,
   AnnouncementConditionType,
-  AnnouncementOperator
+  AnnouncementOperator,
+  EntityID
 } from '@/types'
 
 import Select from '@/components/common/Select.vue'
@@ -314,9 +315,9 @@ function setBalanceValue(groupIndex: number, condIndex: number, raw: string) {
   })
 }
 
-// We keep group_ids selection in a parallel reactive map because GroupSelector is numeric list.
+// We keep group_ids selection in a parallel reactive map because GroupSelector owns the list UI.
 // Then we mirror it back to targeting.group_ids via a watcher.
-const subscriptionSelections = reactive<Record<number, Record<number, number[]>>>({})
+const subscriptionSelections = reactive<Record<string | number, Record<string | number, EntityID[]>>>({})
 
 function ensureSelectionPath(groupIndex: number, condIndex: number) {
   if (!subscriptionSelections[groupIndex]) subscriptionSelections[groupIndex] = {}

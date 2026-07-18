@@ -105,7 +105,7 @@ function validateRuntimeSettings(settings: OpsAlertRuntimeSettings): ValidationR
         break
       }
       const ruleId = (entry as any)?.rule_id
-      if (typeof ruleId === 'number' && (!Number.isFinite(ruleId) || ruleId <= 0)) {
+      if (typeof ruleId === 'string' && ruleId.trim() && !/^[1-9]\d*$/.test(ruleId.trim())) {
         errors.push(t('admin.ops.runtime.silencing.entries.validation.ruleIdPositive'))
         break
       }
@@ -197,8 +197,7 @@ function updateSilenceEntryRuleId(index: number, raw: string) {
     delete (entries[index] as any).rule_id
     return
   }
-  const n = Number.parseInt(trimmed, 10)
-  ;(entries[index] as any).rule_id = Number.isFinite(n) ? n : undefined
+  ;(entries[index] as any).rule_id = trimmed
 }
 
 function updateSilenceEntrySeverities(index: number, raw: string) {
@@ -454,7 +453,7 @@ onMounted(() => {
                   <div>
                     <div class="mb-1 text-xs font-medium text-gray-600 dark:text-gray-300">{{ t('admin.ops.runtime.silencing.entries.ruleId') }}</div>
                     <input
-                      :value="typeof (entry as any).rule_id === 'number' ? String((entry as any).rule_id) : ''"
+                      :value="typeof (entry as any).rule_id === 'string' ? (entry as any).rule_id : ''"
                       type="text"
                       class="input font-mono text-sm"
                       :placeholder="t('admin.ops.runtime.silencing.entries.ruleIdPlaceholder')"
@@ -533,4 +532,3 @@ onMounted(() => {
     </template>
   </BaseDialog>
 </template>
-

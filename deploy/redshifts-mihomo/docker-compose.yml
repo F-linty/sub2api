@@ -1,0 +1,13 @@
+services:
+  redshifts-mihomo:
+    image: metacubex/mihomo:latest
+    container_name: redshifts-mihomo
+    restart: unless-stopped
+    volumes:
+      - ./config.yaml:/root/.config/mihomo/config.yaml:ro
+    networks:
+      - sub2api_default
+
+networks:
+  sub2api_default:
+    external: true

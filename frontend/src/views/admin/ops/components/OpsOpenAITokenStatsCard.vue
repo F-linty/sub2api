@@ -8,7 +8,7 @@ import { formatNumber } from '@/utils/format'
 
 interface Props {
   platformFilter?: string
-  groupIdFilter?: number | null
+  groupIdFilter?: string | number | null
   refreshToken: number
 }
 
@@ -80,7 +80,7 @@ function buildParams() {
   const params: Record<string, any> = {
     time_range: timeRange.value,
     platform: props.platformFilter || undefined,
-    group_id: typeof props.groupIdFilter === 'number' && props.groupIdFilter > 0 ? props.groupIdFilter : undefined
+    group_id: props.groupIdFilter !== null && props.groupIdFilter !== undefined && String(props.groupIdFilter) !== '0' ? props.groupIdFilter : undefined
   }
 
   if (viewMode.value === 'topn') {

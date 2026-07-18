@@ -2573,6 +2573,7 @@ import { adminAPI } from '@/api/admin'
 import { useQuotaNotifyState } from '@/composables/useQuotaNotifyState'
 import type {
   Account,
+  EntityID,
   Proxy,
   AdminGroup,
   CheckMixedChannelResponse,
@@ -2702,7 +2703,7 @@ const poolModeRetryStatusCodesInput = ref('')
 
 function parsePoolModeRetryStatusCodes(input: string): number[] {
   if (!input || !input.trim()) return []
-  const seen = new Set<number>()
+  const seen = new Set<string | number>()
   const out: number[] = []
   for (const token of input.split(/[,\s]+/)) {
     const trimmed = token.trim()
@@ -2720,7 +2721,7 @@ function parsePoolModeRetryStatusCodes(input: string): number[] {
 function formatPoolModeRetryStatusCodes(value: unknown): string {
   if (!Array.isArray(value)) return ''
   const out: number[] = []
-  const seen = new Set<number>()
+  const seen = new Set<string | number>()
   for (const v of value) {
     const n = typeof v === 'string' ? Number(v.trim()) : Number(v)
     if (!Number.isFinite(n) || !Number.isInteger(n)) continue
@@ -2805,8 +2806,8 @@ const umqModeOptions = computed(() => [
   { value: 'serialize', label: t('admin.accounts.quotaControl.rpmLimit.umqModeSerialize') },
 ])
 const tlsFingerprintEnabled = ref(false)
-const tlsFingerprintProfileId = ref<number | null>(null)
-const tlsFingerprintProfiles = ref<{ id: number; name: string }[]>([])
+const tlsFingerprintProfileId = ref<string | number | null>(null)
+const tlsFingerprintProfiles = ref<{ id: string | number; name: string }[]>([])
 const sessionIdMaskingEnabled = ref(false)
 const cacheTTLOverrideEnabled = ref(false)
 const cacheTTLOverrideTarget = ref<string>('5m')
@@ -3122,13 +3123,13 @@ const mixedChannelWarningMessageText = computed(() => {
 const form = reactive({
   name: '',
   notes: '',
-  proxy_id: null as number | null,
+  proxy_id: null as EntityID | null,
   concurrency: 1,
   load_factor: null as number | null,
   priority: 1,
   rate_multiplier: 1,
   status: 'active' as 'active' | 'inactive' | 'error',
-  group_ids: [] as number[],
+  group_ids: [] as EntityID[],
   expires_at: null as number | null
 })
 
@@ -3956,7 +3957,7 @@ const handleClose = () => {
   emit('close')
 }
 
-const submitUpdateAccount = async (accountID: number, updatePayload: Record<string, unknown>) => {
+const submitUpdateAccount = async (accountID: string | number, updatePayload: Record<string, unknown>) => {
   submitting.value = true
   try {
     const updatedAccount = await adminAPI.accounts.update(accountID, withAntigravityConfirmFlag(updatePayload))

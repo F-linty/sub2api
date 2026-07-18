@@ -22,7 +22,7 @@
 .driver-active-element {
   position: relative !important;
   z-index: 99999999 !important;
-  outline: 4px solid rgba(20, 184, 166, 0.2) !important;
+  outline: 4px solid rgba(196, 91, 69, 0.22) !important;
   border-radius: 4px !important;
 }
 
@@ -31,7 +31,7 @@
   position: fixed !important;
   z-index: 100000000 !important;
   background-color: #ffffff !important;
-  border: 1px solid #e5e7eb !important;
+  border: 1px solid #ebe4df !important;
   box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04) !important;
   border-radius: 12px !important;
   padding: 0 !important;
@@ -105,8 +105,8 @@
   align-items: center !important;
   justify-content: space-between !important; /* Push Left and Right apart */
   padding: 16px 24px !important;
-  background-color: #f9fafb !important;
-  border-top: 1px solid #f3f4f6 !important;
+  background-color: #fffaf7 !important;
+  border-top: 1px solid #ebe4df !important;
   margin: 0 !important;
 }
 .dark .theme-tour-popover .driver-popover-footer {
@@ -144,7 +144,7 @@
   align-items: center !important;
   gap: 12px !important;
   padding-left: 16px !important;
-  border-left: 1px solid #e5e7eb !important;
+  border-left: 1px solid #ebe4df !important;
   height: 20px !important;
 }
 .dark .footer-shortcuts { border-left-color: #334155 !important; }
@@ -162,7 +162,7 @@
 .shortcut-item kbd {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, monospace !important;
   background-color: #ffffff !important;
-  border: 1px solid #e5e7eb !important;
+  border: 1px solid #ebe4df !important;
   border-radius: 4px !important;
   padding: 1px 6px !important;
   font-size: 11px !important;
@@ -196,16 +196,16 @@
 }
 
 .theme-tour-popover .driver-popover-next-btn {
-  background-color: #14b8a6 !important;
+  background-color: #151515 !important;
   color: #ffffff !important;
   box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05) !important;
 }
-.theme-tour-popover .driver-popover-next-btn:hover { background-color: #0d9488 !important; }
+.theme-tour-popover .driver-popover-next-btn:hover { background-color: #2a2a2a !important; }
 
 .theme-tour-popover .driver-popover-prev-btn {
   background-color: white !important;
   color: #6b7280 !important;
-  border: 1px solid #e5e7eb !important;
+  border: 1px solid #ebe4df !important;
   box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05) !important;
 }
 .theme-tour-popover .driver-popover-prev-btn:hover { background-color: #f9fafb !important; color: #374151 !important; }

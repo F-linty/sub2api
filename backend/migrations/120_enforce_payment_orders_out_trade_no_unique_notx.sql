@@ -7,4 +7,4 @@ CREATE UNIQUE INDEX CONCURRENTLY IF NOT EXISTS paymentorder_out_trade_no_unique
     ON payment_orders (out_trade_no)
     WHERE out_trade_no <> '';
 
-DROP INDEX CONCURRENTLY IF EXISTS paymentorder_out_trade_no;
+DROP INDEX IF EXISTS paymentorder_out_trade_no;

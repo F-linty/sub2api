@@ -2,8 +2,6 @@
 -- Supports three billing modes: token (per-token with context intervals),
 -- per_request (per-request with context-size tiers), and image (per-image).
 
-SET LOCAL lock_timeout = '5s';
-SET LOCAL statement_timeout = '10min';
 
 -- 1. 为 channel_model_pricing 添加 billing_mode 列
 ALTER TABLE channel_model_pricing

@@ -10,28 +10,13 @@ ALTER TABLE channel_monitors
 ALTER TABLE channel_monitor_request_templates
     ADD COLUMN IF NOT EXISTS api_mode VARCHAR(32) NOT NULL DEFAULT 'chat_completions';
 
-DO $$
-BEGIN
-    IF NOT EXISTS (
-        SELECT 1 FROM information_schema.table_constraints
-        WHERE constraint_name = 'channel_monitors_api_mode_check'
-          AND table_name = 'channel_monitors'
-    ) THEN
-        ALTER TABLE channel_monitors
-            ADD CONSTRAINT channel_monitors_api_mode_check
-            CHECK (api_mode IN ('chat_completions', 'responses'));
-    END IF;
+ALTER TABLE channel_monitors
+    ADD CONSTRAINT channel_monitors_api_mode_check
+    CHECK (api_mode IN ('chat_completions', 'responses'));
 
-    IF NOT EXISTS (
-        SELECT 1 FROM information_schema.table_constraints
-        WHERE constraint_name = 'channel_monitor_request_templates_api_mode_check'
-          AND table_name = 'channel_monitor_request_templates'
-    ) THEN
-        ALTER TABLE channel_monitor_request_templates
-            ADD CONSTRAINT channel_monitor_request_templates_api_mode_check
-            CHECK (api_mode IN ('chat_completions', 'responses'));
-    END IF;
-END $$;
+ALTER TABLE channel_monitor_request_templates
+    ADD CONSTRAINT channel_monitor_request_templates_api_mode_check
+    CHECK (api_mode IN ('chat_completions', 'responses'));
 
 CREATE INDEX IF NOT EXISTS idx_channel_monitors_provider_api_mode
     ON channel_monitors (provider, api_mode);

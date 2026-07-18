@@ -284,6 +284,10 @@ const openCancelConfirm = (task: UsageCleanupTask) => {
   cancelConfirmVisible.value = true
 }
 
+const hasEntityId = (value: string | number | null | undefined) => {
+  return value !== null && value !== undefined && String(value).trim() !== '' && String(value) !== '0'
+}
+
 const buildPayload = (): CreateUsageCleanupTaskRequest | null => {
   if (!localStartDate.value || !localEndDate.value) {
     appStore.showError(t('admin.usage.cleanup.missingRange'))
@@ -296,16 +300,16 @@ const buildPayload = (): CreateUsageCleanupTaskRequest | null => {
     timezone: getUserTimezone()
   }
 
-  if (localFilters.value.user_id && localFilters.value.user_id > 0) {
+  if (hasEntityId(localFilters.value.user_id)) {
     payload.user_id = localFilters.value.user_id
   }
-  if (localFilters.value.api_key_id && localFilters.value.api_key_id > 0) {
+  if (hasEntityId(localFilters.value.api_key_id)) {
     payload.api_key_id = localFilters.value.api_key_id
   }
-  if (localFilters.value.account_id && localFilters.value.account_id > 0) {
+  if (hasEntityId(localFilters.value.account_id)) {
     payload.account_id = localFilters.value.account_id
   }
-  if (localFilters.value.group_id && localFilters.value.group_id > 0) {
+  if (hasEntityId(localFilters.value.group_id)) {
     payload.group_id = localFilters.value.group_id
   }
   if (localFilters.value.model) {

@@ -26,8 +26,8 @@ func (h *GeminiOAuthHandler) GetCapabilities(c *gin.Context) {
 }
 
 type GeminiGenerateAuthURLRequest struct {
-	ProxyID   *int64 `json:"proxy_id"`
-	ProjectID string `json:"project_id"`
+	ProxyID   *jsonInt64 `json:"proxy_id"`
+	ProjectID string     `json:"project_id"`
 	// OAuth 类型: "code_assist" (需要 project_id) 或 "ai_studio" (不需要 project_id)
 	// 默认为 "code_assist" 以保持向后兼容
 	OAuthType string `json:"oauth_type"`
@@ -57,7 +57,7 @@ func (h *GeminiOAuthHandler) GenerateAuthURL(c *gin.Context) {
 	// Always pass the "hosted" callback URI; the OAuth service may override it depending on
 	// oauth_type and whether the built-in Gemini CLI OAuth client is used.
 	redirectURI := deriveGeminiRedirectURI(c)
-	result, err := h.geminiOAuthService.GenerateAuthURL(c.Request.Context(), req.ProxyID, redirectURI, req.ProjectID, oauthType, req.TierID)
+	result, err := h.geminiOAuthService.GenerateAuthURL(c.Request.Context(), jsonInt64Ptr(req.ProxyID), redirectURI, req.ProjectID, oauthType, req.TierID)
 	if err != nil {
 		msg := err.Error()
 		// Treat missing/invalid OAuth client configuration as a user/config error.
@@ -77,10 +77,10 @@ func (h *GeminiOAuthHandler) GenerateAuthURL(c *gin.Context) {
 }
 
 type GeminiExchangeCodeRequest struct {
-	SessionID string `json:"session_id" binding:"required"`
-	State     string `json:"state" binding:"required"`
-	Code      string `json:"code" binding:"required"`
-	ProxyID   *int64 `json:"proxy_id"`
+	SessionID string     `json:"session_id" binding:"required"`
+	State     string     `json:"state" binding:"required"`
+	Code      string     `json:"code" binding:"required"`
+	ProxyID   *jsonInt64 `json:"proxy_id"`
 	// OAuth 类型: "code_assist" 或 "ai_studio"，需要与 GenerateAuthURL 时的类型一致
 	OAuthType string `json:"oauth_type"`
 	// TierID is a user-selected tier to be used when auto detection is unavailable or fails.
@@ -111,7 +111,7 @@ func (h *GeminiOAuthHandler) ExchangeCode(c *gin.Context) {
 		SessionID: req.SessionID,
 		State:     req.State,
 		Code:      req.Code,
-		ProxyID:   req.ProxyID,
+		ProxyID:   jsonInt64Ptr(req.ProxyID),
 		OAuthType: oauthType,
 		TierID:    req.TierID,
 	})

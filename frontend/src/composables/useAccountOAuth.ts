@@ -45,7 +45,7 @@ export function useAccountOAuth() {
   // Generate auth URL
   const generateAuthUrl = async (
     addMethod: AddMethod,
-    proxyId?: number | null
+    proxyId?: string | number | null
   ): Promise<boolean> => {
     loading.value = true
     authUrl.value = ''
@@ -75,7 +75,7 @@ export function useAccountOAuth() {
   // Exchange auth code for tokens
   const exchangeAuthCode = async (
     addMethod: AddMethod,
-    proxyId?: number | null
+    proxyId?: string | number | null
   ): Promise<TokenInfo | null> => {
     if (!authCode.value.trim() || !sessionId.value) {
       error.value = 'Missing auth code or session ID'
@@ -112,7 +112,7 @@ export function useAccountOAuth() {
   const cookieAuth = async (
     addMethod: AddMethod,
     sessionKeyValue: string,
-    proxyId?: number | null
+    proxyId?: string | number | null
   ): Promise<TokenInfo | null> => {
     if (!sessionKeyValue.trim()) {
       error.value = 'Please enter sessionKey'

@@ -1,5 +1,11 @@
 package service
 
+import (
+	"encoding/json"
+	"strconv"
+	"strings"
+)
+
 // Ops settings models stored in DB `settings` table (JSON blobs).
 
 type OpsEmailNotificationConfig struct {
@@ -50,6 +56,56 @@ type OpsAlertSilenceEntry struct {
 
 	UntilRFC3339 string `json:"until_rfc3339"`
 	Reason       string `json:"reason"`
+}
+
+func (e OpsAlertSilenceEntry) MarshalJSON() ([]byte, error) {
+	type payload struct {
+		RuleID       *string  `json:"rule_id,omitempty"`
+		Severities   []string `json:"severities,omitempty"`
+		UntilRFC3339 string   `json:"until_rfc3339"`
+		Reason       string   `json:"reason"`
+	}
+	var ruleID *string
+	if e.RuleID != nil {
+		value := strconv.FormatInt(*e.RuleID, 10)
+		ruleID = &value
+	}
+	return json.Marshal(payload{
+		RuleID:       ruleID,
+		Severities:   e.Severities,
+		UntilRFC3339: e.UntilRFC3339,
+		Reason:       e.Reason,
+	})
+}
+
+func (e *OpsAlertSilenceEntry) UnmarshalJSON(raw []byte) error {
+	type payload struct {
+		RuleID       json.RawMessage `json:"rule_id"`
+		Severities   []string        `json:"severities,omitempty"`
+		UntilRFC3339 string          `json:"until_rfc3339"`
+		Reason       string          `json:"reason"`
+	}
+	var p payload
+	if err := json.Unmarshal(raw, &p); err != nil {
+		return err
+	}
+
+	e.RuleID = nil
+	if len(p.RuleID) > 0 && strings.TrimSpace(string(p.RuleID)) != "null" {
+		value := strings.TrimSpace(string(p.RuleID))
+		if unquoted, err := strconv.Unquote(value); err == nil {
+			value = unquoted
+		}
+		parsed, err := strconv.ParseInt(value, 10, 64)
+		if err != nil {
+			return err
+		}
+		e.RuleID = &parsed
+	}
+	e.Severities = p.Severities
+	e.UntilRFC3339 = p.UntilRFC3339
+	e.Reason = p.Reason
+	return nil
 }
 
 type OpsAlertSilencingSettings struct {

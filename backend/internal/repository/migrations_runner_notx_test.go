@@ -7,6 +7,7 @@ import (
 	"testing/fstest"
 
 	sqlmock "github.com/DATA-DOG/go-sqlmock"
+	"github.com/Wei-Shaw/sub2api/internal/pkg/dbdialect"
 	"github.com/stretchr/testify/require"
 )
 
@@ -138,6 +139,38 @@ func TestApplyMigrationsFS_NonTransactionalMigration_LatestAPIKeyIPIndexDropsInv
 	mock.ExpectExec("SELECT pg_advisory_unlock\\(\\$1\\)").
 		WithArgs(migrationsAdvisoryLockID).
 		WillReturnResult(sqlmock.NewResult(0, 1))
+
+	fsys := fstest.MapFS{
+		latestAPIKeyIPIndexMigration: &fstest.MapFile{
+			Data: []byte(`
+CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_usage_logs_api_key_latest_ip
+    ON usage_logs (api_key_id, created_at DESC, id DESC)
+    INCLUDE (ip_address)
+    WHERE ip_address IS NOT NULL AND ip_address <> '';
+`),
+		},
+	}
+
+	err = applyMigrationsFS(context.Background(), db, fsys)
+	require.NoError(t, err)
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestApplyMigrationsFS_CockroachSkipsLatestAPIKeyIPIndex(t *testing.T) {
+	SetCurrentDatabaseDialect(dbdialect.CockroachDB{})
+	defer SetCurrentDatabaseDialect(dbdialect.Postgres{})
+
+	db, mock, err := sqlmock.New()
+	require.NoError(t, err)
+	defer func() { _ = db.Close() }()
+
+	prepareCockroachMigrationsBootstrapExpectations(mock)
+	mock.ExpectQuery("SELECT checksum FROM schema_migrations WHERE filename = \\$1").
+		WithArgs(latestAPIKeyIPIndexMigration).
+		WillReturnError(sql.ErrNoRows)
+	mock.ExpectExec("INSERT INTO schema_migrations \\(filename, checksum\\) VALUES \\(\\$1, \\$2\\)").
+		WithArgs(latestAPIKeyIPIndexMigration, sqlmock.AnyArg()).
+		WillReturnResult(sqlmock.NewResult(1, 1))
 
 	fsys := fstest.MapFS{
 		latestAPIKeyIPIndexMigration: &fstest.MapFile{
@@ -306,6 +339,19 @@ func prepareMigrationsBootstrapExpectations(mock sqlmock.Sqlmock) {
 	mock.ExpectQuery("SELECT pg_try_advisory_lock\\(\\$1\\)").
 		WithArgs(migrationsAdvisoryLockID).
 		WillReturnRows(sqlmock.NewRows([]string{"pg_try_advisory_lock"}).AddRow(true))
+	mock.ExpectExec("CREATE TABLE IF NOT EXISTS schema_migrations").
+		WillReturnResult(sqlmock.NewResult(0, 0))
+	mock.ExpectQuery("SELECT EXISTS \\(").
+		WithArgs("schema_migrations").
+		WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(true))
+	mock.ExpectQuery("SELECT EXISTS \\(").
+		WithArgs("atlas_schema_revisions").
+		WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(true))
+	mock.ExpectQuery("SELECT COUNT\\(\\*\\) FROM atlas_schema_revisions").
+		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(1))
+}
+
+func prepareCockroachMigrationsBootstrapExpectations(mock sqlmock.Sqlmock) {
 	mock.ExpectExec("CREATE TABLE IF NOT EXISTS schema_migrations").
 		WillReturnResult(sqlmock.NewResult(0, 0))
 	mock.ExpectQuery("SELECT EXISTS \\(").

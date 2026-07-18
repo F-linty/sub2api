@@ -5,7 +5,7 @@
 
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import type { Toast, ToastType, PublicSettings } from '@/types'
+import type { PageNotice, Toast, ToastType, PublicSettings } from '@/types'
 import { i18n } from '@/i18n'
 import {
   checkUpdates as checkUpdatesAPI,
@@ -22,6 +22,7 @@ export const useAppStore = defineStore('app', () => {
   const sidebarScrollTop = ref<number>(0)
   const loading = ref<boolean>(false)
   const toasts = ref<Toast[]>([])
+  const pageNotices = ref<PageNotice[]>([])
 
   // Public settings cache state
   const publicSettingsLoaded = ref<boolean>(false)
@@ -46,6 +47,7 @@ export const useAppStore = defineStore('app', () => {
 
   // Auto-incrementing ID for toasts
   let toastIdCounter = 0
+  let pageNoticeIdCounter = 0
 
   // ==================== Computed ====================
 
@@ -126,6 +128,33 @@ export const useAppStore = defineStore('app', () => {
     }
 
     return id
+  }
+
+  function showPageNotice(type: ToastType, message: string, duration: number = 3600): string {
+    const id = `page-notice-${++pageNoticeIdCounter}`
+    const notice: PageNotice = {
+      id,
+      type,
+      message,
+      duration
+    }
+
+    pageNotices.value.push(notice)
+
+    if (duration > 0) {
+      setTimeout(() => {
+        hidePageNotice(id)
+      }, duration)
+    }
+
+    return id
+  }
+
+  function hidePageNotice(id: string): void {
+    const index = pageNotices.value.findIndex((notice) => notice.id === id)
+    if (index !== -1) {
+      pageNotices.value.splice(index, 1)
+    }
   }
 
   /**
@@ -232,6 +261,7 @@ export const useAppStore = defineStore('app', () => {
     loading.value = false
     loadingCount.value = 0
     toasts.value = []
+    pageNotices.value = []
   }
 
   // ==================== Version Management ====================
@@ -432,6 +462,7 @@ export const useAppStore = defineStore('app', () => {
     sidebarScrollTop,
     loading,
     toasts,
+    pageNotices,
 
     // Public settings state
     publicSettingsLoaded,
@@ -463,11 +494,13 @@ export const useAppStore = defineStore('app', () => {
     setMobileOpen,
     setLoading,
     showToast,
+    showPageNotice,
     showSuccess,
     showError,
     showInfo,
     showWarning,
     hideToast,
+    hidePageNotice,
     clearAllToasts,
     withLoading,
     withLoadingAndError,

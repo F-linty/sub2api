@@ -482,7 +482,7 @@ const appStore = useAppStore()
 
 const props = defineProps<{
   show: boolean
-  accountId: number | null
+  accountId: string | number | null
   modelOptions: SelectOption[]
 }>()
 
@@ -496,12 +496,12 @@ const creating = ref(false)
 const loadingResults = ref(false)
 const plans = ref<ScheduledTestPlan[]>([])
 const results = ref<ScheduledTestResult[]>([])
-const expandedPlanId = ref<number | null>(null)
-const expandedResultIds = reactive(new Set<number>())
+const expandedPlanId = ref<string | number | null>(null)
+const expandedResultIds = reactive(new Set<string | number>())
 const showAddForm = ref(false)
 const showDeleteConfirm = ref(false)
 const deletingPlan = ref<ScheduledTestPlan | null>(null)
-const editingPlanId = ref<number | null>(null)
+const editingPlanId = ref<string | number | null>(null)
 const updating = ref(false)
 const editForm = reactive({
   model_id: '' as string,
@@ -653,7 +653,7 @@ const handleDelete = async () => {
   }
 }
 
-const toggleExpand = async (planId: number) => {
+const toggleExpand = async (planId: string | number) => {
   if (expandedPlanId.value === planId) {
     expandedPlanId.value = null
     results.value = []
@@ -674,7 +674,7 @@ const toggleExpand = async (planId: number) => {
   }
 }
 
-const toggleResultDetail = (resultId: number) => {
+const toggleResultDetail = (resultId: string | number) => {
   if (expandedResultIds.has(resultId)) {
     expandedResultIds.delete(resultId)
   } else {

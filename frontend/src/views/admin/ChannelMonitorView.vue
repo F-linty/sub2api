@@ -154,7 +154,7 @@ const {
 
 const monitors = ref<ChannelMonitor[]>([])
 const loading = ref(false)
-const runningId = ref<number | null>(null)
+const runningId = ref<string | number | null>(null)
 const searchQuery = ref('')
 const providerFilter = ref<Provider | ''>('')
 const enabledFilter = ref<'' | 'true' | 'false'>('')

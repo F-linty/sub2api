@@ -219,6 +219,9 @@ func lockRepositoryScopedKeys(ctx context.Context, client *dbent.Client, exec sq
 	if len(normalized) == 0 || client == nil || exec == nil || client.Driver().Dialect() != dialect.Postgres {
 		return release, nil
 	}
+	if !CurrentDatabaseDialect().SupportsAdvisoryLocks() {
+		return release, nil
+	}
 
 	for _, key := range normalized {
 		rows, err := exec.QueryContext(ctx, "SELECT pg_advisory_xact_lock($1)", advisoryLockHash(key))

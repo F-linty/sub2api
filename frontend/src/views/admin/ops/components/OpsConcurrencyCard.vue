@@ -5,7 +5,7 @@ import { opsAPI, type OpsAccountAvailabilityStatsResponse, type OpsConcurrencySt
 
 interface Props {
   platformFilter?: string
-  groupIdFilter?: number | null
+  groupIdFilter?: string | number | null
   refreshToken: number
 }
 
@@ -38,7 +38,7 @@ const displayDimension = computed<'platform' | 'group' | 'account' | 'user'>(() 
   if (showByUser.value) {
     return 'user'
   }
-  if (typeof props.groupIdFilter === 'number' && props.groupIdFilter > 0) {
+  if (props.groupIdFilter !== null && props.groupIdFilter !== undefined && String(props.groupIdFilter) !== '0') {
     return 'account'
   }
   if (props.platformFilter) {
@@ -90,7 +90,7 @@ interface AccountRow {
 // 用户行数据
 interface UserRow {
   key: string
-  user_id: number
+  user_id: string | number
   user_email: string
   username: string
   current_in_use: number
@@ -188,8 +188,8 @@ const accountRows = computed((): AccountRow[] => {
       const avail = availStats[aid] || {}
 
       // 只显示匹配的分组
-      if (typeof props.groupIdFilter === 'number' && props.groupIdFilter > 0) {
-        if (conc.group_id !== props.groupIdFilter && avail.group_id !== props.groupIdFilter) {
+      if (props.groupIdFilter !== null && props.groupIdFilter !== undefined && String(props.groupIdFilter) !== '0') {
+        if (String(conc.group_id) !== String(props.groupIdFilter) && String(avail.group_id) !== String(props.groupIdFilter)) {
           return null
         }
       }

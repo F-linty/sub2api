@@ -84,14 +84,15 @@ import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { adminAPI } from "@/api/admin";
 import type { SimpleUser } from "@/api/admin/usage";
+import type { EntityID } from "@/types";
 import Icon from "@/components/icons/Icon.vue";
 
 const props = defineProps<{
-  modelValue: number[];
+  modelValue: EntityID[];
 }>();
 
 const emit = defineEmits<{
-  "update:modelValue": [value: number[]];
+  "update:modelValue": [value: EntityID[]];
 }>();
 
 const { t } = useI18n();
@@ -100,23 +101,23 @@ const searchQuery = ref("");
 const searchResults = ref<SimpleUser[]>([]);
 const searchLoading = ref(false);
 const showDropdown = ref(false);
-const selectedUsers = ref<Record<number, SimpleUser>>({});
+const selectedUsers = ref<Record<string, SimpleUser>>({});
 let searchTimer: ReturnType<typeof setTimeout> | null = null;
 let searchSequence = 0;
 
 const selectedUserIds = computed(() =>
-  Array.from(new Set(props.modelValue.filter((id) => Number.isInteger(id) && id > 0))),
+  Array.from(new Set(props.modelValue.filter((id) => String(id).trim() !== "" && String(id) !== "0"))),
 );
 
 const availableResults = computed(() => {
-  const selected = new Set(selectedUserIds.value);
+  const selected = new Set(selectedUserIds.value.map((id) => String(id)));
   return searchResults.value
-    .filter((user) => !selected.has(user.id))
+    .filter((user) => !selected.has(String(user.id)))
     .sort((a, b) => Number(a.deleted) - Number(b.deleted));
 });
 
-function selectedUserLabel(userId: number): string {
-  return selectedUsers.value[userId]?.email ||
+function selectedUserLabel(userId: EntityID): string {
+  return selectedUsers.value[String(userId)]?.email ||
     t("admin.settings.openaiFastPolicy.userIdFallback", { id: userId });
 }
 
@@ -159,7 +160,7 @@ function debounceSearch(): void {
 }
 
 function selectUser(user: SimpleUser): void {
-  selectedUsers.value = { ...selectedUsers.value, [user.id]: user };
+  selectedUsers.value = { ...selectedUsers.value, [String(user.id)]: user };
   emit("update:modelValue", [...selectedUserIds.value, user.id]);
   clearPendingSearch();
   searchQuery.value = "";
@@ -168,15 +169,15 @@ function selectUser(user: SimpleUser): void {
   showDropdown.value = false;
 }
 
-function removeUser(userId: number): void {
+function removeUser(userId: EntityID): void {
   emit(
     "update:modelValue",
-    selectedUserIds.value.filter((id) => id !== userId),
+    selectedUserIds.value.filter((id) => String(id) !== String(userId)),
   );
 }
 
-async function hydrateSelectedUsers(userIds: number[]): Promise<void> {
-  const missing = userIds.filter((id) => !selectedUsers.value[id]);
+async function hydrateSelectedUsers(userIds: EntityID[]): Promise<void> {
+  const missing = userIds.filter((id) => !selectedUsers.value[String(id)]);
   if (missing.length === 0) return;
 
   const users = await Promise.all(
@@ -196,8 +197,8 @@ async function hydrateSelectedUsers(userIds: number[]): Promise<void> {
 
   const next = { ...selectedUsers.value };
   for (const user of users) {
-    if (user && props.modelValue.includes(user.id)) {
-      next[user.id] = user;
+    if (user && props.modelValue.some((id) => String(id) === String(user.id))) {
+      next[String(user.id)] = user;
     }
   }
   selectedUsers.value = next;

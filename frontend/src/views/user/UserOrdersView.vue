@@ -104,7 +104,7 @@ const actionLoading = ref(false)
 const orders = ref<PaymentOrder[]>([])
 const refundEligibleProviders = ref<Set<string>>(new Set())
 const currentFilter = ref('')
-const cancelTargetId = ref<number | null>(null)
+const cancelTargetId = ref<string | number | null>(null)
 const refundTarget = ref<PaymentOrder | null>(null)
 const refundReason = ref('')
 const pagination = reactive({ page: 1, page_size: 20, total: 0 })
@@ -137,7 +137,7 @@ async function fetchOrders() {
 function handlePageChange(page: number) { pagination.page = page; fetchOrders() }
 function handlePageSizeChange(size: number) { pagination.page_size = size; pagination.page = 1; fetchOrders() }
 
-function handleCancel(orderId: number) { cancelTargetId.value = orderId }
+function handleCancel(orderId: string | number) { cancelTargetId.value = orderId }
 
 async function confirmCancel() {
   if (!cancelTargetId.value) return

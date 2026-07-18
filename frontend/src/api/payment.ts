@@ -55,12 +55,12 @@ export const paymentAPI = {
   },
 
   /** Get a specific order by ID */
-  getOrder(id: number) {
+  getOrder(id: string | number) {
     return apiClient.get<PaymentOrder>(`/payment/orders/${id}`)
   },
 
   /** Cancel a pending order */
-  cancelOrder(id: number) {
+  cancelOrder(id: string | number) {
     return apiClient.post(`/payment/orders/${id}/cancel`)
   },
 
@@ -80,7 +80,7 @@ export const paymentAPI = {
   },
 
   /** Request a refund for a completed order */
-  requestRefund(id: number, data: { reason: string }) {
+  requestRefund(id: string | number, data: { reason: string }) {
     return apiClient.post(`/payment/orders/${id}/refund-request`, data)
   },
 

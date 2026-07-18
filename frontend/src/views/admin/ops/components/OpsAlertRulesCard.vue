@@ -36,12 +36,12 @@ onMounted(() => {
 })
 
 const sortedRules = computed(() => {
-  return [...rules.value].sort((a, b) => (b.id || 0) - (a.id || 0))
+  return [...rules.value].sort((a, b) => String(b.id || '').localeCompare(String(a.id || '')))
 })
 
 const showEditor = ref(false)
 const saving = ref(false)
-const editingId = ref<number | null>(null)
+const editingId = ref<string | null>(null)
 const draft = ref<AlertRule | null>(null)
 
 type MetricGroup = 'system' | 'group' | 'account'

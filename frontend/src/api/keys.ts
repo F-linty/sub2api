@@ -20,7 +20,7 @@ export async function list(
   filters?: {
     search?: string
     status?: string
-    group_id?: number | string
+    group_id?: string | number | string
     sort_by?: string
     sort_order?: 'asc' | 'desc'
   },
@@ -40,7 +40,7 @@ export async function list(
  * @param id - API key ID
  * @returns API key details
  */
-export async function getById(id: number): Promise<ApiKey> {
+export async function getById(id: string | number): Promise<ApiKey> {
   const { data } = await apiClient.get<ApiKey>(`/keys/${id}`)
   return data
 }
@@ -59,7 +59,7 @@ export async function getById(id: number): Promise<ApiKey> {
  */
 export async function create(
   name: string,
-  groupId?: number | null,
+  groupId?: string | number | null,
   customKey?: string,
   ipWhitelist?: string[],
   ipBlacklist?: string[],
@@ -106,7 +106,7 @@ export async function create(
  * @param updates - Fields to update
  * @returns Updated API key
  */
-export async function update(id: number, updates: UpdateApiKeyRequest): Promise<ApiKey> {
+export async function update(id: string | number, updates: UpdateApiKeyRequest): Promise<ApiKey> {
   const { data } = await apiClient.put<ApiKey>(`/keys/${id}`, updates)
   return data
 }
@@ -116,7 +116,7 @@ export async function update(id: number, updates: UpdateApiKeyRequest): Promise<
  * @param id - API key ID
  * @returns Success confirmation
  */
-export async function deleteKey(id: number): Promise<{ message: string }> {
+export async function deleteKey(id: string | number): Promise<{ message: string }> {
   const { data } = await apiClient.delete<{ message: string }>(`/keys/${id}`)
   return data
 }
@@ -127,7 +127,7 @@ export async function deleteKey(id: number): Promise<{ message: string }> {
  * @param status - New status
  * @returns Updated API key
  */
-export async function toggleStatus(id: number, status: 'active' | 'inactive'): Promise<ApiKey> {
+export async function toggleStatus(id: string | number, status: 'active' | 'inactive'): Promise<ApiKey> {
   return update(id, { status })
 }
 

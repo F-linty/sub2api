@@ -23,8 +23,8 @@ describe('createStableObjectKeyResolver', () => {
   })
 
   it('不同 resolver 互不影响', () => {
-    const resolveA = createStableObjectKeyResolver<{ id: number }>('a')
-    const resolveB = createStableObjectKeyResolver<{ id: number }>('b')
+    const resolveA = createStableObjectKeyResolver<{ id: string | number }>('a')
+    const resolveB = createStableObjectKeyResolver<{ id: string | number }>('b')
     const obj = { id: 1 }
 
     const keyA = resolveA(obj)

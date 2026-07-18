@@ -82,15 +82,15 @@ func TestAdminAPIKeyHandler_UpdateGroup_BindGroup(t *testing.T) {
 
 	var data struct {
 		APIKey struct {
-			ID      int64  `json:"id"`
-			GroupID *int64 `json:"group_id"`
+			ID      string  `json:"id"`
+			GroupID *string `json:"group_id"`
 		} `json:"api_key"`
 		AutoGrantedGroupAccess bool `json:"auto_granted_group_access"`
 	}
 	require.NoError(t, json.Unmarshal(resp.Data, &data))
-	require.Equal(t, int64(10), data.APIKey.ID)
+	require.Equal(t, "10", data.APIKey.ID)
 	require.NotNil(t, data.APIKey.GroupID)
-	require.Equal(t, int64(2), *data.APIKey.GroupID)
+	require.Equal(t, "2", *data.APIKey.GroupID)
 }
 
 func TestAdminAPIKeyHandler_UpdateGroup_Unbind(t *testing.T) {
@@ -110,7 +110,7 @@ func TestAdminAPIKeyHandler_UpdateGroup_Unbind(t *testing.T) {
 	var resp struct {
 		Data struct {
 			APIKey struct {
-				GroupID *int64 `json:"group_id"`
+				GroupID *string `json:"group_id"`
 			} `json:"api_key"`
 		} `json:"data"`
 	}
@@ -188,13 +188,13 @@ func TestAdminAPIKeyHandler_UpdateGroup_EmptyBody_NoChange(t *testing.T) {
 		Code int `json:"code"`
 		Data struct {
 			APIKey struct {
-				ID int64 `json:"id"`
+				ID string `json:"id"`
 			} `json:"api_key"`
 		} `json:"data"`
 	}
 	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &resp))
 	require.Equal(t, 0, resp.Code)
-	require.Equal(t, int64(10), resp.Data.APIKey.ID)
+	require.Equal(t, "10", resp.Data.APIKey.ID)
 }
 
 // M2: service returns GROUP_NOT_ACTIVE → handler maps to 400

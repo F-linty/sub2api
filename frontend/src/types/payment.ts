@@ -81,8 +81,8 @@ export interface CheckoutInfoResponse {
 // ==================== Orders ====================
 
 export interface PaymentOrder {
-  id: number
-  user_id: number
+  id: string | number
+  user_id: string | number
   amount: number
   pay_amount: number
   currency?: string
@@ -100,15 +100,15 @@ export interface PaymentOrder {
   refund_requested_at?: string
   refund_requested_by?: number
   refund_request_reason?: string
-  plan_id?: number
+  plan_id?: string | number
   provider_instance_id?: string
 }
 
 // ==================== Plans & Channels ====================
 
 export interface SubscriptionPlan {
-  id: number
-  group_id: number
+  id: string | number
+  group_id: string | number
   group_platform?: string
   group_name?: string
   rate_multiplier?: number
@@ -133,8 +133,8 @@ export interface SubscriptionPlan {
 }
 
 export interface PaymentChannel {
-  id: number
-  group_id?: number
+  id: string | number
+  group_id?: string | number
   name: string
   platform: string
   rate_multiplier: number
@@ -147,7 +147,7 @@ export interface PaymentChannel {
 // ==================== Providers ====================
 
 export interface ProviderInstance {
-  id: number
+  id: string | number
   provider_key: string
   name: string
   config: Record<string, string>
@@ -166,7 +166,7 @@ export interface CreateOrderRequest {
   amount: number
   payment_type: string
   order_type: string
-  plan_id?: number
+  plan_id?: string | number
   return_url?: string
   payment_source?: string
   openid?: string
@@ -225,5 +225,5 @@ export interface DashboardStats {
   avg_amount: number
   daily_series: { date: string; amount: number; count: number }[]
   payment_methods: { type: string; amount: number; count: number }[]
-  top_users: { user_id: number; email: string; amount: number }[]
+  top_users: { user_id: string | number; email: string; amount: number }[]
 }

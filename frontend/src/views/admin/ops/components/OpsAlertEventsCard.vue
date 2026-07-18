@@ -205,7 +205,11 @@ async function openDetail(row: AlertEvent) {
     selected.value = detail
   } catch (err: any) {
     console.error('[OpsAlertEventsCard] Failed to load alert detail', err)
-    appStore.showError(err?.response?.data?.detail || t('admin.ops.alertEvents.detail.loadFailed'))
+    appStore.showError(
+      err?.response?.data?.detail ||
+      err?.response?.data?.message ||
+      t('admin.ops.alertEvents.detail.loadFailed')
+    )
   } finally {
     detailLoading.value = false
   }
@@ -225,7 +229,7 @@ async function loadHistory() {
   try {
     const platform = getDimensionString(ev, 'platform')
     const groupIdRaw = ev.dimensions?.group_id
-    const groupId = typeof groupIdRaw === 'number' ? groupIdRaw : undefined
+    const groupId = groupIdRaw !== null && groupIdRaw !== undefined && String(groupIdRaw) !== '' ? groupIdRaw : undefined
 
     const items = await opsAPI.listAlertEvents({
       limit: 20,
@@ -645,4 +649,3 @@ const empty = computed(() => events.value.length === 0 && !loading.value)
     </BaseDialog>
   </div>
 </template>
-

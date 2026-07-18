@@ -534,7 +534,7 @@ const RING_GRADIENTS = [
 ]
 
 const ringAnimated = ref(false)
-const displayPcts = ref<number[]>([])
+const displayPcts = ref<(string | number)[]>([])
 
 const ringTrackColor = computed(() => isDark.value ? '#222222' : '#F0F0EE')
 

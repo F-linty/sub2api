@@ -9,7 +9,7 @@ import { apiClient } from '../client'
  * TLS fingerprint profile interface
  */
 export interface TLSFingerprintProfile {
-  id: number
+  id: string | number
   name: string
   description: string | null
   enable_grease: boolean
@@ -67,7 +67,7 @@ export async function list(): Promise<TLSFingerprintProfile[]> {
   return data
 }
 
-export async function getById(id: number): Promise<TLSFingerprintProfile> {
+export async function getById(id: string | number): Promise<TLSFingerprintProfile> {
   const { data } = await apiClient.get<TLSFingerprintProfile>(`/admin/tls-fingerprint-profiles/${id}`)
   return data
 }
@@ -77,12 +77,12 @@ export async function create(profileData: CreateProfileRequest): Promise<TLSFing
   return data
 }
 
-export async function update(id: number, updates: UpdateProfileRequest): Promise<TLSFingerprintProfile> {
+export async function update(id: string | number, updates: UpdateProfileRequest): Promise<TLSFingerprintProfile> {
   const { data } = await apiClient.put<TLSFingerprintProfile>(`/admin/tls-fingerprint-profiles/${id}`, updates)
   return data
 }
 
-export async function deleteProfile(id: number): Promise<{ message: string }> {
+export async function deleteProfile(id: string | number): Promise<{ message: string }> {
   const { data } = await apiClient.delete<{ message: string }>(`/admin/tls-fingerprint-profiles/${id}`)
   return data
 }

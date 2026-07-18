@@ -18,6 +18,7 @@ import (
 	"github.com/Wei-Shaw/sub2api/ent/identityadoptiondecision"
 	"github.com/Wei-Shaw/sub2api/ent/pendingauthsession"
 	dbpredicate "github.com/Wei-Shaw/sub2api/ent/predicate"
+	"github.com/Wei-Shaw/sub2api/internal/pkg/dbdialect"
 	infraerrors "github.com/Wei-Shaw/sub2api/internal/pkg/errors"
 
 	entsql "entgo.io/ent/dialect/sql"
@@ -173,6 +174,9 @@ func lockAuthPendingIdentityKeys(ctx context.Context, client *dbent.Client, keys
 	release := authPendingIdentityScopedKeyLocks.lock(keys...)
 	normalized := normalizeAuthPendingIdentityLockKeys(keys...)
 	if len(normalized) == 0 || client == nil || client.Driver().Dialect() != dialect.Postgres {
+		return release, nil
+	}
+	if !dbdialect.Current().SupportsAdvisoryLocks() {
 		return release, nil
 	}
 

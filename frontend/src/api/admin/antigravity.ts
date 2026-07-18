@@ -12,14 +12,14 @@ export interface AntigravityAuthUrlResponse {
 }
 
 export interface AntigravityAuthUrlRequest {
-  proxy_id?: number
+  proxy_id?: string | number
 }
 
 export interface AntigravityExchangeCodeRequest {
   session_id: string
   state: string
   code: string
-  proxy_id?: number
+  proxy_id?: string | number
 }
 
 export interface AntigravityTokenInfo {
@@ -55,7 +55,7 @@ export async function exchangeCode(
 
 export async function refreshAntigravityToken(
   refreshToken: string,
-  proxyId?: number | null
+  proxyId?: string | number | null
 ): Promise<AntigravityTokenInfo> {
   const payload: Record<string, any> = { refresh_token: refreshToken }
   if (proxyId) payload.proxy_id = proxyId

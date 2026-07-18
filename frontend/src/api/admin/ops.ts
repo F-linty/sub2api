@@ -16,7 +16,7 @@ export interface OpsRequestOptions {
 export type OpsUpstreamErrorEvent = {
   at_unix_ms?: number
   platform?: string
-  account_id?: number
+  account_id?: string | number
   account_name?: string
   upstream_status_code?: number
   upstream_request_id?: string
@@ -29,7 +29,7 @@ export interface OpsDashboardOverview {
   start_time: string
   end_time: string
   platform: string
-  group_id?: number | null
+  group_id?: string | number | null
 
   health_score?: number
 
@@ -92,7 +92,7 @@ export interface OpsThroughputPlatformBreakdownItem {
 }
 
 export interface OpsThroughputGroupBreakdownItem {
-  group_id: number
+  group_id: string | number
   group_name: string
   request_count: number
   token_consumed: number
@@ -124,10 +124,10 @@ export interface OpsRequestDetail {
   severity?: string
   message?: string
 
-  user_id?: number | null
-  api_key_id?: number | null
-  account_id?: number | null
-  group_id?: number | null
+  user_id?: string | number | null
+  api_key_id?: string | number | null
+  account_id?: string | number | null
+  group_id?: string | number | null
 
   stream?: boolean
 }
@@ -140,11 +140,11 @@ export interface OpsRequestDetailsParams {
   kind?: OpsRequestDetailsKind
 
   platform?: string
-  group_id?: number | null
+  group_id?: string | number | null
 
-  user_id?: number
-  api_key_id?: number
-  account_id?: number
+  user_id?: string | number
+  api_key_id?: string | number
+  account_id?: string | number
 
   model?: string
   request_id?: string
@@ -170,7 +170,7 @@ export interface OpsLatencyHistogramResponse {
   start_time: string
   end_time: string
   platform: string
-  group_id?: number | null
+  group_id?: string | number | null
 
   total_requests: number
   buckets: OpsLatencyHistogramBucket[]
@@ -227,7 +227,7 @@ export interface OpsOpenAITokenStatsResponse {
   start_time: string
   end_time: string
   platform?: string
-  group_id?: number | null
+  group_id?: string | number | null
   items: OpsOpenAITokenStatsItem[]
   total: number
   page?: number
@@ -238,14 +238,14 @@ export interface OpsOpenAITokenStatsResponse {
 export interface OpsOpenAITokenStatsParams {
   time_range?: OpsOpenAITokenStatsTimeRange
   platform?: string
-  group_id?: number | null
+  group_id?: string | number | null
   page?: number
   page_size?: number
   top_n?: number
 }
 
 export interface OpsSystemMetricsSnapshot {
-  id: number
+  id: string | number
   created_at: string
   window_minutes: number
 
@@ -293,7 +293,7 @@ export interface PlatformConcurrencyInfo {
 }
 
 export interface GroupConcurrencyInfo {
-  group_id: number
+  group_id: string | number
   group_name: string
   platform: string
   current_in_use: number
@@ -303,10 +303,10 @@ export interface GroupConcurrencyInfo {
 }
 
 export interface AccountConcurrencyInfo {
-  account_id: number
+  account_id: string | number
   account_name?: string
   platform: string
-  group_id: number
+  group_id: string | number
   group_name: string
   current_in_use: number
   max_capacity: number
@@ -323,7 +323,7 @@ export interface OpsConcurrencyStatsResponse {
 }
 
 export interface UserConcurrencyInfo {
-  user_id: number
+  user_id: string | number
   user_email: string
   username: string
   current_in_use: number
@@ -338,7 +338,7 @@ export interface OpsUserConcurrencyStatsResponse {
   timestamp?: string
 }
 
-export async function getConcurrencyStats(platform?: string, groupId?: number | null): Promise<OpsConcurrencyStatsResponse> {
+export async function getConcurrencyStats(platform?: string, groupId?: string | number | null): Promise<OpsConcurrencyStatsResponse> {
   const params: Record<string, any> = {}
   if (platform) {
     params.platform = platform
@@ -365,7 +365,7 @@ export interface PlatformAvailability {
 }
 
 export interface GroupAvailability {
-  group_id: number
+  group_id: string | number
   group_name: string
   platform: string
   total_accounts: number
@@ -375,10 +375,10 @@ export interface GroupAvailability {
 }
 
 export interface AccountAvailability {
-  account_id: number
+  account_id: string | number
   account_name: string
   platform: string
-  group_id: number
+  group_id: string | number
   group_name: string
   status: string
   is_available: boolean
@@ -400,7 +400,7 @@ export interface OpsAccountAvailabilityStatsResponse {
   timestamp?: string
 }
 
-export async function getAccountAvailabilityStats(platform?: string, groupId?: number | null): Promise<OpsAccountAvailabilityStatsResponse> {
+export async function getAccountAvailabilityStats(platform?: string, groupId?: string | number | null): Promise<OpsAccountAvailabilityStatsResponse> {
   const params: Record<string, any> = {}
   if (platform) {
     params.platform = platform
@@ -423,7 +423,7 @@ export interface OpsRealtimeTrafficSummary {
   start_time: string
   end_time: string
   platform: string
-  group_id?: number | null
+  group_id?: string | number | null
   qps: OpsRateSummary
   tps: OpsRateSummary
 }
@@ -437,7 +437,7 @@ export interface OpsRealtimeTrafficSummaryResponse {
 export async function getRealtimeTrafficSummary(
   window: string,
   platform?: string,
-  groupId?: number | null
+  groupId?: string | number | null
 ): Promise<OpsRealtimeTrafficSummaryResponse> {
   const params: Record<string, any> = { window }
   if (platform) {
@@ -691,7 +691,7 @@ export type MetricType =
 export type Operator = '>' | '>=' | '<' | '<=' | '==' | '!='
 
 export interface AlertRule {
-  id?: number
+	id?: string
   name: string
   description?: string
   enabled: boolean
@@ -710,8 +710,8 @@ export interface AlertRule {
 }
 
 export interface AlertEvent {
-  id: number
-  rule_id: number
+	id: string
+	rule_id: string
   severity: OpsSeverity | string
   status: 'firing' | 'resolved' | 'manual_resolved' | string
   title?: string
@@ -771,7 +771,7 @@ export interface OpsAlertRuntimeSettings {
     global_until_rfc3339: string
     global_reason: string
     entries?: Array<{
-      rule_id?: number
+      rule_id?: string
       severities?: Array<OpsSeverity | string>
       until_rfc3339: string
       reason: string
@@ -826,7 +826,7 @@ export interface OpsRuntimeLogConfig {
 }
 
 export interface OpsSystemLog {
-  id: number
+  id: string | number
   created_at: string
   host: string
   level: string
@@ -834,9 +834,9 @@ export interface OpsSystemLog {
   message: string
   request_id?: string
   client_request_id?: string
-  user_id?: number | null
-  api_key_id?: number | null
-  account_id?: number | null
+  user_id?: string | number | null
+  api_key_id?: string | number | null
+  account_id?: string | number | null
   platform?: string
   model?: string
   extra?: Record<string, any>
@@ -855,9 +855,9 @@ export interface OpsSystemLogQuery {
   component?: string
   request_id?: string
   client_request_id?: string
-  user_id?: number | null
-  api_key_id?: number | null
-  account_id?: number | null
+  user_id?: string | number | null
+  api_key_id?: string | number | null
+  account_id?: string | number | null
   platform?: string
   model?: string
   q?: string
@@ -871,9 +871,9 @@ export interface OpsSystemLogCleanupRequest {
   component?: string
   request_id?: string
   client_request_id?: string
-  user_id?: number | null
-  api_key_id?: number | null
-  account_id?: number | null
+  user_id?: string | number | null
+  api_key_id?: string | number | null
+  account_id?: string | number | null
   platform?: string
   model?: string
   q?: string
@@ -890,7 +890,7 @@ export interface OpsSystemLogSinkHealth {
 }
 
 export interface OpsErrorLog {
-  id: number
+  id: string | number
   created_at: string
 
   // Standardized classification
@@ -912,15 +912,15 @@ export interface OpsErrorLog {
   request_id: string
   message: string
 
-  user_id?: number | null
+  user_id?: string | number | null
   user_email: string
-  api_key_id?: number | null
+  api_key_id?: string | number | null
   // 关联 api_key 名称（后端 LEFT JOIN api_keys；软删保留 name，故已删 key 仍有原名）。
   api_key_name?: string
   api_key_deleted?: boolean
-  account_id?: number | null
+  account_id?: string | number | null
   account_name: string
-  group_id?: number | null
+  group_id?: string | number | null
   group_name: string
 
   client_ip?: string | null
@@ -975,7 +975,7 @@ export async function getDashboardOverview(
   start_time?: string
   end_time?: string
   platform?: string
-  group_id?: number | null
+  group_id?: string | number | null
   mode?: OpsQueryMode
   },
   options: OpsRequestOptions = {}
@@ -993,7 +993,7 @@ export async function getDashboardSnapshotV2(
   start_time?: string
   end_time?: string
   platform?: string
-  group_id?: number | null
+  group_id?: string | number | null
   mode?: OpsQueryMode
   },
   options: OpsRequestOptions = {}
@@ -1011,7 +1011,7 @@ export async function getThroughputTrend(
   start_time?: string
   end_time?: string
   platform?: string
-  group_id?: number | null
+  group_id?: string | number | null
   mode?: OpsQueryMode
   },
   options: OpsRequestOptions = {}
@@ -1029,7 +1029,7 @@ export async function getLatencyHistogram(
   start_time?: string
   end_time?: string
   platform?: string
-  group_id?: number | null
+  group_id?: string | number | null
   mode?: OpsQueryMode
   },
   options: OpsRequestOptions = {}
@@ -1047,7 +1047,7 @@ export async function getErrorTrend(
   start_time?: string
   end_time?: string
   platform?: string
-  group_id?: number | null
+  group_id?: string | number | null
   mode?: OpsQueryMode
   },
   options: OpsRequestOptions = {}
@@ -1065,7 +1065,7 @@ export async function getErrorDistribution(
   start_time?: string
   end_time?: string
   platform?: string
-  group_id?: number | null
+  group_id?: string | number | null
   mode?: OpsQueryMode
   },
   options: OpsRequestOptions = {}
@@ -1097,10 +1097,10 @@ export type OpsErrorListQueryParams = {
   start_time?: string
   end_time?: string
   platform?: string
-  group_id?: number | null
-  account_id?: number | null
-  user_id?: number
-  api_key_id?: number
+  group_id?: string | number | null
+  account_id?: string | number | null
+  user_id?: string | number
+  api_key_id?: string | number
   // 模型过滤：后端以 COALESCE(requested_model, model) 精确匹配（admin 路径）。
   model?: string
 
@@ -1127,12 +1127,12 @@ export async function listErrorLogs(params: OpsErrorListQueryParams): Promise<Op
   return data
 }
 
-export async function getErrorLogDetail(id: number): Promise<OpsErrorDetail> {
+export async function getErrorLogDetail(id: string | number): Promise<OpsErrorDetail> {
   const { data } = await apiClient.get<OpsErrorDetail>(`/admin/ops/errors/${id}`)
   return data
 }
 
-export async function updateErrorResolved(errorId: number, resolved: boolean): Promise<void> {
+export async function updateErrorResolved(errorId: string | number, resolved: boolean): Promise<void> {
   await apiClient.put(`/admin/ops/errors/${errorId}/resolve`, { resolved })
 }
 
@@ -1147,26 +1147,26 @@ export async function listUpstreamErrors(params: OpsErrorListQueryParams): Promi
   return data
 }
 
-export async function getRequestErrorDetail(id: number): Promise<OpsErrorDetail> {
+export async function getRequestErrorDetail(id: string | number): Promise<OpsErrorDetail> {
   const { data } = await apiClient.get<OpsErrorDetail>(`/admin/ops/request-errors/${id}`)
   return data
 }
 
-export async function getUpstreamErrorDetail(id: number): Promise<OpsErrorDetail> {
+export async function getUpstreamErrorDetail(id: string | number): Promise<OpsErrorDetail> {
   const { data } = await apiClient.get<OpsErrorDetail>(`/admin/ops/upstream-errors/${id}`)
   return data
 }
 
-export async function updateRequestErrorResolved(errorId: number, resolved: boolean): Promise<void> {
+export async function updateRequestErrorResolved(errorId: string | number, resolved: boolean): Promise<void> {
   await apiClient.put(`/admin/ops/request-errors/${errorId}/resolve`, { resolved })
 }
 
-export async function updateUpstreamErrorResolved(errorId: number, resolved: boolean): Promise<void> {
+export async function updateUpstreamErrorResolved(errorId: string | number, resolved: boolean): Promise<void> {
   await apiClient.put(`/admin/ops/upstream-errors/${errorId}/resolve`, { resolved })
 }
 
 export async function listRequestErrorUpstreamErrors(
-  id: number,
+  id: string | number,
   params: OpsErrorListQueryParams = {},
   options: { include_detail?: boolean } = {}
 ): Promise<PaginatedResponse<OpsErrorDetail>> {
@@ -1192,12 +1192,12 @@ export async function createAlertRule(rule: AlertRule): Promise<AlertRule> {
   return data
 }
 
-export async function updateAlertRule(id: number, rule: Partial<AlertRule>): Promise<AlertRule> {
+export async function updateAlertRule(id: string, rule: Partial<AlertRule>): Promise<AlertRule> {
   const { data } = await apiClient.put<AlertRule>(`/admin/ops/alert-rules/${id}`, rule)
   return data
 }
 
-export async function deleteAlertRule(id: number): Promise<void> {
+export async function deleteAlertRule(id: string): Promise<void> {
   await apiClient.delete(`/admin/ops/alert-rules/${id}`)
 }
 
@@ -1210,9 +1210,9 @@ export interface AlertEventsQuery {
   start_time?: string
   end_time?: string
   before_fired_at?: string
-  before_id?: number
+  before_id?: string
   platform?: string
-  group_id?: number
+  group_id?: string | number
 }
 
 export async function listAlertEvents(params: AlertEventsQuery = {}): Promise<AlertEvent[]> {
@@ -1220,19 +1220,19 @@ export async function listAlertEvents(params: AlertEventsQuery = {}): Promise<Al
   return data
 }
 
-export async function getAlertEvent(id: number): Promise<AlertEvent> {
+export async function getAlertEvent(id: string): Promise<AlertEvent> {
   const { data } = await apiClient.get<AlertEvent>(`/admin/ops/alert-events/${id}`)
   return data
 }
 
-export async function updateAlertEventStatus(id: number, status: 'resolved' | 'manual_resolved'): Promise<void> {
+export async function updateAlertEventStatus(id: string, status: 'resolved' | 'manual_resolved'): Promise<void> {
   await apiClient.put(`/admin/ops/alert-events/${id}/status`, { status })
 }
 
 export async function createAlertSilence(payload: {
-  rule_id: number
+  rule_id: string
   platform: string
-  group_id?: number | null
+  group_id?: string | number | null
   region?: string | null
   until: string
   reason?: string

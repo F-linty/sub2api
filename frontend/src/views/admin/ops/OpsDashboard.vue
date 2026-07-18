@@ -191,7 +191,7 @@ const lastUpdated = ref<Date | null>(new Date())
 
 const timeRange = ref<TimeRange>('1h')
 const platform = ref<string>('')
-const groupId = ref<number | null>(null)
+const groupId = ref<string | number | null>(null)
 const queryMode = ref<QueryMode>('auto')
 const customStartTime = ref<string | null>(null)
 const customEndTime = ref<string | null>(null)
@@ -280,8 +280,8 @@ const applyRouteQueryToState = () => {
 
   platform.value = readQueryString(QUERY_KEYS.platform) || ''
 
-  const groupIdRaw = readQueryNumber(QUERY_KEYS.groupId)
-  groupId.value = typeof groupIdRaw === 'number' && groupIdRaw > 0 ? groupIdRaw : null
+  const groupIdRaw = readQueryString(QUERY_KEYS.groupId)
+  groupId.value = groupIdRaw && groupIdRaw !== '0' ? groupIdRaw : null
 
   const nextMode = readQueryString(QUERY_KEYS.queryMode)
   if (nextMode && allowedQueryModes.has(nextMode as QueryMode)) {
@@ -319,7 +319,7 @@ const buildQueryFromState = () => {
 
   if (timeRange.value !== '1h') next[QUERY_KEYS.timeRange] = timeRange.value
   if (platform.value) next[QUERY_KEYS.platform] = platform.value
-  if (typeof groupId.value === 'number' && groupId.value > 0) next[QUERY_KEYS.groupId] = String(groupId.value)
+  if (groupId.value !== null && String(groupId.value).trim() !== '' && String(groupId.value) !== '0') next[QUERY_KEYS.groupId] = String(groupId.value)
   if (queryMode.value !== 'auto') next[QUERY_KEYS.queryMode] = queryMode.value
 
   return next
@@ -362,7 +362,7 @@ const loadingErrorTrend = ref(false)
 const errorDistribution = ref<OpsErrorDistributionResponse | null>(null)
 const loadingErrorDistribution = ref(false)
 
-const selectedErrorId = ref<number | null>(null)
+const selectedErrorId = ref<string | number | null>(null)
 const showErrorModal = ref(false)
 
 const showErrorDetails = ref(false)
@@ -434,9 +434,9 @@ function handleThroughputSelectPlatform(nextPlatform: string) {
   groupId.value = null
 }
 
-function handleThroughputSelectGroup(nextGroupId: number) {
-  const id = Number.isFinite(nextGroupId) && nextGroupId > 0 ? nextGroupId : null
-  groupId.value = id
+function handleThroughputSelectGroup(nextGroupId: string | number) {
+  const id = String(nextGroupId).trim()
+  groupId.value = id && id !== '0' ? nextGroupId : null
 }
 
 function handleOpenRequestDetails(preset?: OpsRequestDetailsPreset) {
@@ -504,7 +504,7 @@ function onQueryModeChange(v: string | number | boolean | null) {
   queryMode.value = v as QueryMode
 }
 
-function openError(id: number) {
+function openError(id: string | number) {
   selectedErrorId.value = id
   // Ensure only one modal visible at a time.
   showErrorDetails.value = false

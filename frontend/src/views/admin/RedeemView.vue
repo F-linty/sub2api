@@ -619,6 +619,7 @@ import { formatDateTime } from '@/utils/format'
 import type {
   RedeemCode,
   RedeemCodeType,
+  EntityID,
   Group,
   GroupPlatform,
   SubscriptionType,
@@ -800,7 +801,7 @@ const {
   deselect,
   clear: clearSelectedCodes,
   toggleVisible
-} = useTableSelection<RedeemCode>({
+} = useTableSelection<RedeemCode, string | number>({
   rows: codes,
   getId: (code) => code.id
 })
@@ -814,7 +815,7 @@ const batchUpdateForm = reactive({
   update_notes: false,
   notes: '',
   update_group_id: false,
-  group_id: null as number | null
+  group_id: null as EntityID | null
 })
 
 type RedeemCodeExpiryOption = 'never' | '1' | '3' | '7' | 'custom'
@@ -831,7 +832,7 @@ const generateForm = reactive({
   type: 'balance' as RedeemCodeType,
   value: 10,
   count: 1,
-  group_id: null as number | null,
+  group_id: null as EntityID | null,
   validity_days: 30,
   expiry_option: 'never' as RedeemCodeExpiryOption,
   custom_expiry_days: 7
@@ -924,7 +925,7 @@ const handleSort = (key: string, order: 'asc' | 'desc') => {
   loadCodes()
 }
 
-const toggleSelectRow = (id: number, event: Event) => {
+const toggleSelectRow = (id: string | number, event: Event) => {
   const target = event.target as HTMLInputElement
   if (target.checked) {
     select(id)
@@ -1011,7 +1012,7 @@ const buildBatchUpdateFields = (): BatchUpdateRedeemCodeFields | null => {
   }
   if (batchUpdateForm.update_group_id) {
     fields.group_id =
-      batchUpdateForm.group_id == null ? null : Number(batchUpdateForm.group_id)
+      batchUpdateForm.group_id == null ? null : batchUpdateForm.group_id
   }
 
   return Object.keys(fields).length > 0 ? fields : null

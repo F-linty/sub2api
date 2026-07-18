@@ -141,7 +141,7 @@
           <template #empty>
             <EmptyState
               :title="t('empty.noData')"
-              :description="t('admin.announcements.failedToLoad')"
+              :description="t('admin.announcements.emptyDescription')"
               :action-text="t('admin.announcements.createAnnouncement')"
               @action="openCreateDialog"
             />
@@ -587,7 +587,7 @@ async function confirmDelete() {
 
 // ===== Read status =====
 const showReadStatusDialog = ref(false)
-const readStatusAnnouncementId = ref<number | null>(null)
+const readStatusAnnouncementId = ref<string | null>(null)
 
 function openReadStatus(row: Announcement) {
   readStatusAnnouncementId.value = row.id

@@ -2,11 +2,11 @@
   <AuthLayout>
     <div class="space-y-6">
       <!-- Title -->
-      <div class="text-center">
-        <h2 class="text-2xl font-bold text-gray-900 dark:text-white">
+      <div class="text-left">
+        <h2 class="text-2xl font-semibold tracking-tight text-[#191817] dark:text-white">
           {{ t('auth.welcomeBack') }}
         </h2>
-        <p class="mt-2 text-sm text-gray-500 dark:text-dark-400">
+        <p class="mt-2 text-sm text-[#74706d] dark:text-dark-400">
           {{ t('auth.signInToAccount') }}
         </p>
       </div>
@@ -14,12 +14,12 @@
       <form @submit.prevent="handleLogin" class="space-y-5">
         <!-- Email Input -->
         <div>
-          <label for="email" class="input-label">
+          <label for="email" class="input-label text-[#383532]">
             {{ t('auth.emailLabel') }}
           </label>
           <div class="relative">
             <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5">
-              <Icon name="mail" size="md" class="text-gray-400 dark:text-dark-500" />
+              <Icon name="mail" size="md" class="text-[#9b948f] dark:text-dark-500" />
             </div>
             <input
               id="email"
@@ -29,7 +29,7 @@
               autofocus
               autocomplete="email"
               :disabled="authActionDisabled"
-              class="input pl-11"
+              class="input h-12 rounded-2xl border-[#ebe4df] bg-[#fbfaf8] pl-11 focus:border-[#c45b45] focus:ring-[#c45b45]/10 dark:bg-dark-800"
               :class="{ 'input-error': errors.email }"
               :placeholder="t('auth.emailPlaceholder')"
             />
@@ -38,12 +38,12 @@
 
         <!-- Password Input -->
         <div>
-          <label for="password" class="input-label">
+          <label for="password" class="input-label text-[#383532]">
             {{ t('auth.passwordLabel') }}
           </label>
           <div class="relative">
             <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5">
-              <Icon name="lock" size="md" class="text-gray-400 dark:text-dark-500" />
+              <Icon name="lock" size="md" class="text-[#9b948f] dark:text-dark-500" />
             </div>
             <input
               id="password"
@@ -52,7 +52,7 @@
               required
               autocomplete="current-password"
               :disabled="authActionDisabled"
-              class="input pl-11 pr-11"
+              class="input h-12 rounded-2xl border-[#ebe4df] bg-[#fbfaf8] pl-11 pr-11 focus:border-[#c45b45] focus:ring-[#c45b45]/10 dark:bg-dark-800"
               :class="{ 'input-error': errors.password }"
               :placeholder="t('auth.passwordPlaceholder')"
             />
@@ -60,7 +60,7 @@
               type="button"
               @click="showPassword = !showPassword"
               :disabled="authActionDisabled"
-              class="absolute inset-y-0 right-0 flex items-center pr-3.5 text-gray-400 transition-colors hover:text-gray-600 dark:hover:text-dark-300"
+              class="absolute inset-y-0 right-0 flex items-center pr-3.5 text-[#9b948f] transition-colors hover:text-[#5f5b57] dark:hover:text-dark-300"
             >
               <Icon v-if="showPassword" name="eyeOff" size="md" />
               <Icon v-else name="eye" size="md" />
@@ -71,7 +71,7 @@
             <router-link
               v-if="passwordResetEnabled && !backendModeEnabled"
               to="/forgot-password"
-              class="text-sm font-medium text-primary-600 transition-colors hover:text-primary-500 dark:text-primary-400 dark:hover:text-primary-300"
+              class="text-sm font-medium text-[#5f5b57] transition-colors hover:text-[#a94735] dark:text-slate-200 dark:hover:text-primary-400"
             >
               {{ t('auth.forgotPassword') }}
             </router-link>
@@ -93,7 +93,7 @@
         <button
           type="submit"
           :disabled="authActionDisabled || (turnstileEnabled && !turnstileToken)"
-          class="btn btn-primary w-full"
+          class="btn btn-primary h-14 w-full rounded-2xl text-base"
         >
           <svg
             v-if="isLoading"
@@ -133,11 +133,11 @@
 
         <div v-if="showOAuthLogin" class="space-y-3 pt-1">
           <div class="flex items-center gap-3">
-            <div class="h-px flex-1 bg-gray-200 dark:bg-dark-700"></div>
-            <span class="text-xs text-gray-500 dark:text-dark-400">
+            <div class="h-px flex-1 bg-[#ebe4df] dark:bg-dark-700"></div>
+            <span class="text-xs text-[#8d8782] dark:text-dark-400">
               {{ t('auth.oauthOrContinue') }}
             </span>
-            <div class="h-px flex-1 bg-gray-200 dark:bg-dark-700"></div>
+            <div class="h-px flex-1 bg-[#ebe4df] dark:bg-dark-700"></div>
           </div>
 
           <EmailOAuthButtons
@@ -174,11 +174,11 @@
 
     <!-- Footer -->
     <template v-if="!backendModeEnabled" #footer>
-      <p class="text-gray-500 dark:text-dark-400">
+      <p class="text-[#74706d] dark:text-dark-400">
         {{ t('auth.dontHaveAccount') }}
         <router-link
           to="/register"
-          class="font-medium text-primary-600 transition-colors hover:text-primary-500 dark:text-primary-400 dark:hover:text-primary-300"
+          class="font-semibold text-[#191817] transition-colors hover:text-[#a94735] dark:text-slate-200 dark:hover:text-primary-400"
         >
           {{ t('auth.signUp') }}
         </router-link>
@@ -495,7 +495,7 @@ async function handleLogin(): Promise<void> {
 
     // Show success toast
     clearAllAffiliateReferralCodes()
-    appStore.showSuccess(t('auth.loginSuccess'))
+    appStore.showPageNotice('success', t('auth.loginSuccess'))
 
     // Redirect to dashboard or intended route
     const redirectTo = (router.currentRoute.value.query.redirect as string) || '/dashboard'
@@ -529,7 +529,7 @@ async function handle2FAVerify(code: string): Promise<void> {
     // Close modal and show success
     show2FAModal.value = false
     clearAllAffiliateReferralCodes()
-    appStore.showSuccess(t('auth.loginSuccess'))
+    appStore.showPageNotice('success', t('auth.loginSuccess'))
 
     // Redirect to dashboard or intended route
     const redirectTo = (router.currentRoute.value.query.redirect as string) || '/dashboard'

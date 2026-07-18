@@ -245,7 +245,7 @@ const showApiKeyDropdown = ref(false)
 let apiKeySearchTimeout: ReturnType<typeof setTimeout> | null = null
 
 interface SimpleAccount {
-  id: number
+  id: string
   name: string
 }
 const accountKeyword = ref('')

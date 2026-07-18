@@ -172,7 +172,7 @@ import { ref, reactive, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { adminAPI } from '@/api/admin'
 import Icon from '@/components/icons/Icon.vue'
-import type { Proxy } from '@/types'
+import type { EntityID, Proxy } from '@/types'
 
 const { t } = useI18n()
 
@@ -187,7 +187,7 @@ interface ProxyTestResult {
 }
 
 interface Props {
-  modelValue: number | null
+  modelValue: EntityID | null
   proxies: Proxy[]
   disabled?: boolean
 }
@@ -197,7 +197,7 @@ const props = withDefaults(defineProps<Props>(), {
 })
 
 const emit = defineEmits<{
-  'update:modelValue': [value: number | null]
+  'update:modelValue': [value: EntityID | null]
 }>()
 
 const isOpen = ref(false)
@@ -206,13 +206,13 @@ const containerRef = ref<HTMLElement | null>(null)
 const searchInputRef = ref<HTMLInputElement | null>(null)
 
 // Test state
-const testResults = reactive<Record<number, ProxyTestResult>>({})
-const testingProxyIds = reactive(new Set<number>())
+const testResults = reactive<Record<string | number, ProxyTestResult>>({})
+const testingProxyIds = reactive(new Set<string | number>())
 const batchTesting = ref(false)
 
 const selectedProxy = computed(() => {
   if (props.modelValue === null) return null
-  return props.proxies.find((p) => p.id === props.modelValue) || null
+  return props.proxies.find((p) => String(p.id) === String(props.modelValue)) || null
 })
 
 const selectedLabel = computed(() => {
@@ -245,7 +245,7 @@ const toggle = () => {
   }
 }
 
-const selectOption = (value: number | null) => {
+const selectOption = (value: EntityID | null) => {
   emit('update:modelValue', value)
   isOpen.value = false
   searchQuery.value = ''

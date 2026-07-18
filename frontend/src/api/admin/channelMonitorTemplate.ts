@@ -9,7 +9,7 @@ import { apiClient } from '../client'
 import type { APIMode, BodyOverrideMode, Provider } from './channelMonitor'
 
 export interface ChannelMonitorTemplate {
-  id: number
+  id: string | number
   name: string
   provider: Provider
   api_mode: APIMode
@@ -56,7 +56,7 @@ export interface ApplyResponse {
 }
 
 export interface AssociatedMonitorBrief {
-  id: number
+  id: string | number
   name: string
   provider: Provider
   api_mode: APIMode
@@ -74,7 +74,7 @@ export async function list(params: ListParams = {}): Promise<ListResponse> {
   return data
 }
 
-export async function get(id: number): Promise<ChannelMonitorTemplate> {
+export async function get(id: string | number): Promise<ChannelMonitorTemplate> {
   const { data } = await apiClient.get<ChannelMonitorTemplate>(
     `/admin/channel-monitor-templates/${id}`,
   )
@@ -89,7 +89,7 @@ export async function create(params: CreateParams): Promise<ChannelMonitorTempla
   return data
 }
 
-export async function update(id: number, params: UpdateParams): Promise<ChannelMonitorTemplate> {
+export async function update(id: string | number, params: UpdateParams): Promise<ChannelMonitorTemplate> {
   const { data } = await apiClient.put<ChannelMonitorTemplate>(
     `/admin/channel-monitor-templates/${id}`,
     params,
@@ -97,7 +97,7 @@ export async function update(id: number, params: UpdateParams): Promise<ChannelM
   return data
 }
 
-export async function del(id: number): Promise<void> {
+export async function del(id: string | number): Promise<void> {
   await apiClient.delete(`/admin/channel-monitor-templates/${id}`)
 }
 
@@ -106,7 +106,7 @@ export async function del(id: number): Promise<void> {
  * monitorIds must be a non-empty subset of the template's associated monitors.
  * Returns count of actually affected monitors.
  */
-export async function apply(id: number, monitorIds: number[]): Promise<ApplyResponse> {
+export async function apply(id: string | number, monitorIds: (string | number)[]): Promise<ApplyResponse> {
   const { data } = await apiClient.post<ApplyResponse>(
     `/admin/channel-monitor-templates/${id}/apply`,
     { monitor_ids: monitorIds },
@@ -117,7 +117,7 @@ export async function apply(id: number, monitorIds: number[]): Promise<ApplyResp
 /**
  * List monitors currently associated to this template (used by apply picker).
  */
-export async function listAssociatedMonitors(id: number): Promise<AssociatedMonitorsResponse> {
+export async function listAssociatedMonitors(id: string | number): Promise<AssociatedMonitorsResponse> {
   const { data } = await apiClient.get<AssociatedMonitorsResponse>(
     `/admin/channel-monitor-templates/${id}/monitors`,
   )

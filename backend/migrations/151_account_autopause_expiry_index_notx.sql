@@ -1,4 +1,4 @@
-CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_accounts_autopause_expiry_due
+CREATE INDEX IF NOT EXISTS idx_accounts_autopause_expiry_due
     ON accounts (expires_at)
     WHERE deleted_at IS NULL
       AND schedulable = TRUE

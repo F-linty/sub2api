@@ -80,7 +80,7 @@ import type { UserErrorRequestDetail } from '@/types'
 
 const props = defineProps<{
   show: boolean
-  errorId: number | null
+  errorId: string | number | null
 }>()
 
 const emit = defineEmits<{
@@ -105,7 +105,7 @@ watch(
   }
 )
 
-async function fetchDetail(id: number) {
+async function fetchDetail(id: string | number) {
   loading.value = true
   loadError.value = false
   detail.value = null

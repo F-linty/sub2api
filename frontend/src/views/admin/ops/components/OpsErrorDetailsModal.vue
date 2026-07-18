@@ -10,14 +10,14 @@ interface Props {
   show: boolean
   timeRange: string
   platform?: string
-  groupId?: number | null
+  groupId?: string | number | null
   errorType: 'request' | 'upstream'
 }
 
 const props = defineProps<Props>()
 const emit = defineEmits<{
   (e: 'update:show', value: boolean): void
-  (e: 'openErrorDetail', errorId: number): void
+  (e: 'openErrorDetail', errorId: string | number): void
 }>()
 
 const { t } = useI18n()

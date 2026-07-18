@@ -7,7 +7,7 @@ import { apiClient } from './client'
 import type { RedeemCodeRequest } from '@/types'
 
 export interface RedeemHistoryItem {
-  id: number
+  id: string | number
   code: string
   type: string
   value: number
@@ -17,10 +17,10 @@ export interface RedeemHistoryItem {
   // Notes from admin for admin_balance/admin_concurrency types
   notes?: string
   // Subscription-specific fields
-  group_id?: number
+  group_id?: string | number
   validity_days?: number
   group?: {
-    id: number
+    id: string | number
     name: string
   }
 }

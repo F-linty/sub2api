@@ -97,7 +97,7 @@ import BaseDialog from '@/components/common/BaseDialog.vue'
 
 const props = defineProps<{
   show: boolean
-  templateId: number | null
+  templateId: string | number | null
   templateName: string
 }>()
 
@@ -112,7 +112,7 @@ const appStore = useAppStore()
 const loading = ref(false)
 const submitting = ref(false)
 const monitors = ref<AssociatedMonitorBrief[]>([])
-const selectedIds = ref<number[]>([])
+const selectedIds = ref<(string | number)[]>([])
 
 const selectedSet = computed(() => new Set(selectedIds.value))
 
@@ -125,7 +125,7 @@ watch(
   { immediate: true },
 )
 
-async function fetchMonitors(id: number) {
+async function fetchMonitors(id: string | number) {
   loading.value = true
   monitors.value = []
   selectedIds.value = []
@@ -141,7 +141,7 @@ async function fetchMonitors(id: number) {
   }
 }
 
-function toggle(id: number) {
+function toggle(id: string | number) {
   const idx = selectedIds.value.indexOf(id)
   if (idx >= 0) selectedIds.value.splice(idx, 1)
   else selectedIds.value.push(id)

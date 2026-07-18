@@ -1137,7 +1137,7 @@ import type {
   ModerationMode,
   UpdateContentModerationConfig,
 } from '@/api/admin/riskControl'
-import type { AdminGroup, SelectOption } from '@/types'
+import type { AdminGroup, EntityID, SelectOption } from '@/types'
 import { useAppStore } from '@/stores/app'
 import { extractApiErrorMessage } from '@/utils/apiError'
 import { formatDateTime as formatDateTimeValue } from '@/utils/format'
@@ -1199,7 +1199,7 @@ const logsLoading = ref(false)
 const statusLoading = ref(false)
 const apiKeyTesting = ref(false)
 const hashActionLoading = ref(false)
-const unbanningUserID = ref<number | null>(null)
+const unbanningUserID = ref<string | number | null>(null)
 const settingsOpen = ref(false)
 const activeSettingsTab = ref<SettingsTab>('basic')
 const groupSearch = ref('')
@@ -1233,7 +1233,7 @@ const configForm = reactive({
   retry_count: 2,
   sample_rate: 100,
   all_groups: true,
-  group_ids: [] as number[],
+  group_ids: [] as EntityID[],
   record_non_hits: false,
   worker_count: 4,
   queue_size: 32768,
@@ -2087,8 +2087,8 @@ function fileToDataURL(file: File): Promise<string> {
   })
 }
 
-function toggleGroup(groupID: number) {
-  const index = configForm.group_ids.indexOf(groupID)
+function toggleGroup(groupID: string | number) {
+  const index = configForm.group_ids.findIndex((id) => String(id) === String(groupID))
   if (index >= 0) {
     configForm.group_ids.splice(index, 1)
   } else {
@@ -2096,8 +2096,8 @@ function toggleGroup(groupID: number) {
   }
 }
 
-function isGroupSelected(groupID: number): boolean {
-  return configForm.group_ids.includes(groupID)
+function isGroupSelected(groupID: string | number): boolean {
+  return configForm.group_ids.some((id) => String(id) === String(groupID))
 }
 
 function modeLabel(mode: ModerationMode): string {

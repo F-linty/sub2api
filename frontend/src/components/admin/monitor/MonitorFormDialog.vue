@@ -253,7 +253,7 @@ const submitting = ref(false)
 const showKeyPicker = ref(false)
 const myKeysLoading = ref(false)
 const myActiveKeys = ref<ApiKey[]>([])
-const userGroupRates = ref<Record<number, number>>({})
+const userGroupRates = ref<Record<string | number, number>>({})
 
 interface MonitorForm {
   name: string

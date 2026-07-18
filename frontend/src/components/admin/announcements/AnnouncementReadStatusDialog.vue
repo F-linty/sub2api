@@ -89,7 +89,7 @@ const appStore = useAppStore()
 
 const props = defineProps<{
   show: boolean
-  announcementId: number | null
+  announcementId: string | null
 }>()
 
 const emit = defineEmits<{

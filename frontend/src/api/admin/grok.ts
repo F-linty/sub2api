@@ -15,7 +15,7 @@ export interface GrokAuthUrlResponse {
 }
 
 export interface GrokAuthUrlRequest {
-  proxy_id?: number
+  proxy_id?: string | number
   redirect_uri?: string
 }
 
@@ -23,7 +23,7 @@ export interface GrokExchangeCodeRequest {
   session_id: string
   state: string
   code: string
-  proxy_id?: number
+  proxy_id?: string | number
   redirect_uri?: string
 }
 
@@ -139,7 +139,7 @@ export async function exchangeCode(payload: GrokExchangeCodeRequest): Promise<Gr
 
 export async function refreshGrokToken(
   refreshToken: string,
-  proxyId?: number | null
+  proxyId?: string | number | null
 ): Promise<GrokTokenInfo> {
   const payload: Record<string, unknown> = { refresh_token: refreshToken }
   if (proxyId) payload.proxy_id = proxyId
@@ -151,12 +151,12 @@ export async function refreshGrokToken(
   return data
 }
 
-export async function queryQuota(id: number): Promise<GrokQuotaProbeResult> {
+export async function queryQuota(id: string | number): Promise<GrokQuotaProbeResult> {
   const { data } = await apiClient.get<GrokQuotaProbeResult>(`/admin/grok/accounts/${id}/quota`)
   return data
 }
 
-export async function resetQuota(id: number): Promise<GrokQuotaResetResult> {
+export async function resetQuota(id: string | number): Promise<GrokQuotaResetResult> {
   const { data } = await apiClient.post<GrokQuotaResetResult>(`/admin/grok/accounts/${id}/reset-quota`)
   return data
 }

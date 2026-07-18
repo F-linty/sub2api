@@ -59,7 +59,7 @@ describe('useRoutePrefetch', () => {
       const id = setTimeout(() => cb({ didTimeout: false, timeRemaining: () => 50 }), 0)
       return id
     })
-    vi.stubGlobal('cancelIdleCallback', (id: number) => clearTimeout(id))
+    vi.stubGlobal('cancelIdleCallback', (id: string | number) => clearTimeout(id))
   })
 
   afterEach(() => {

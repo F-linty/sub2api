@@ -1,8 +1,6 @@
 -- Create channels table for managing pricing channels.
 -- A channel groups multiple groups together and provides custom model pricing.
 
-SET LOCAL lock_timeout = '5s';
-SET LOCAL statement_timeout = '10min';
 
 -- 渠道表
 CREATE TABLE IF NOT EXISTS channels (

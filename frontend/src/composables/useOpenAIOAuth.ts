@@ -50,7 +50,7 @@ export function useOpenAIOAuth() {
 
   // Generate auth URL for OpenAI OAuth
   const generateAuthUrl = async (
-    proxyId?: number | null,
+    proxyId?: string | number | null,
     redirectUri?: string
   ): Promise<boolean> => {
     loading.value = true
@@ -95,7 +95,7 @@ export function useOpenAIOAuth() {
     code: string,
     currentSessionId: string,
     state: string,
-    proxyId?: number | null
+    proxyId?: string | number | null
   ): Promise<OpenAITokenInfo | null> => {
     if (!code.trim() || !currentSessionId || !state.trim()) {
       error.value = 'Missing auth code, session ID, or state'
@@ -106,7 +106,7 @@ export function useOpenAIOAuth() {
     error.value = ''
 
     try {
-      const payload: { session_id: string; code: string; state: string; proxy_id?: number } = {
+      const payload: { session_id: string; code: string; state: string; proxy_id?: string | number } = {
         session_id: currentSessionId,
         code: code.trim(),
         state: state.trim()
@@ -135,7 +135,7 @@ export function useOpenAIOAuth() {
   // clientId: 指定 OAuth client_id（用于第三方渠道获取的 RT，如 app_LlGpXReQgckcGGUo2JrYvtJK）
   const validateRefreshToken = async (
     refreshToken: string,
-    proxyId?: number | null,
+    proxyId?: string | number | null,
     clientId?: string
   ): Promise<OpenAITokenInfo | null> => {
     if (!refreshToken.trim()) {

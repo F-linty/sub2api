@@ -1136,7 +1136,7 @@ import TablePageLayout from '@/components/layout/TablePageLayout.vue'
 	import EndpointPopover from '@/components/keys/EndpointPopover.vue'
 	import GroupBadge from '@/components/common/GroupBadge.vue'
 	import GroupOptionItem from '@/components/common/GroupOptionItem.vue'
-	import type { ApiKey, Group, PublicSettings, SubscriptionType, GroupPlatform, UpdateApiKeyRequest } from '@/types'
+	import type { ApiKey, EntityID, Group, PublicSettings, SubscriptionType, GroupPlatform, UpdateApiKeyRequest } from '@/types'
 import type { Column } from '@/components/common/types'
 import type { BatchApiKeyUsageStats } from '@/api/usage'
 import { formatDateTime } from '@/utils/format'
@@ -1270,7 +1270,7 @@ const submitting = ref(false)
 const now = ref(new Date())
 let resetTimer: ReturnType<typeof setInterval> | null = null
 const usageStats = ref<Record<string, BatchApiKeyUsageStats>>({})
-const userGroupRates = ref<Record<number, number>>({})
+const userGroupRates = ref<Record<string | number, number>>({})
 
 const pagination = ref({
   page: 1,
@@ -1298,22 +1298,22 @@ const showCcsClientSelect = ref(false)
 const showColumnDropdown = ref(false)
 const pendingCcsRow = ref<ApiKey | null>(null)
 const selectedKey = ref<ApiKey | null>(null)
-const copiedKeyId = ref<number | null>(null)
-const groupSelectorKeyId = ref<number | null>(null)
+const copiedKeyId = ref<string | number | null>(null)
+const groupSelectorKeyId = ref<string | number | null>(null)
 const publicSettings = ref<PublicSettings | null>(null)
 const dropdownRef = ref<HTMLElement | null>(null)
 const columnDropdownRef = ref<HTMLElement | null>(null)
 const dropdownPosition = ref<{ top?: number; bottom?: number; left: number } | null>(null)
-const groupButtonRefs = ref<Map<number, HTMLElement>>(new Map())
+const groupButtonRefs = ref<Map<string | number, HTMLElement>>(new Map())
 let abortController: AbortController | null = null
 
 // Get the currently selected key for group change
 const selectedKeyForGroup = computed(() => {
   if (groupSelectorKeyId.value === null) return null
-  return apiKeys.value.find((k) => k.id === groupSelectorKeyId.value) || null
+  return apiKeys.value.find((k) => String(k.id) === String(groupSelectorKeyId.value)) || null
 })
 
-const setGroupButtonRef = (keyId: number, el: Element | ComponentPublicInstance | null) => {
+const setGroupButtonRef = (keyId: string | number, el: Element | ComponentPublicInstance | null) => {
   if (el instanceof HTMLElement) {
     groupButtonRefs.value.set(keyId, el)
   } else {
@@ -1323,7 +1323,7 @@ const setGroupButtonRef = (keyId: number, el: Element | ComponentPublicInstance 
 
 const formData = ref({
   name: '',
-  group_id: null as number | null,
+  group_id: null as EntityID | null,
   status: 'active' as 'active' | 'inactive',
   use_custom_key: false,
   custom_key: '',
@@ -1429,7 +1429,7 @@ const filteredGroupOptions = computed(() => {
   })
 })
 
-const copyToClipboard = async (text: string, keyId: number) => {
+const copyToClipboard = async (text: string, keyId: string | number) => {
   const success = await clipboardCopy(text, t('keys.copied'))
   if (success) {
     copiedKeyId.value = keyId
@@ -1456,7 +1456,7 @@ const loadApiKeys = async () => {
     const filters: {
       search?: string
       status?: string
-      group_id?: number | string
+      group_id?: string | number | string
       sort_by?: string
       sort_order?: 'asc' | 'desc'
     } = {}
@@ -1621,10 +1621,10 @@ const openGroupSelector = (key: ApiKey) => {
   }
 }
 
-const changeGroup = async (key: ApiKey, newGroupId: number | null) => {
+const changeGroup = async (key: ApiKey, newGroupId: EntityID | null) => {
   groupSelectorKeyId.value = null
   dropdownPosition.value = null
-  if (key.group_id === newGroupId) return
+  if (String(key.group_id ?? '') === String(newGroupId ?? '')) return
 
   try {
     await keysAPI.update(key.id, { group_id: newGroupId })

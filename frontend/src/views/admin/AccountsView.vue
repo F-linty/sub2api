@@ -87,19 +87,19 @@
                       </div>
                     </div>
                     <button class="account-tools-menu-item" @click="openSyncFromCrs">
-                      <span class="account-tools-menu-icon bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-300">
+                      <span class="account-tools-menu-icon bg-[#f3f1ee] text-[#5f5b57] dark:bg-dark-700 dark:text-gray-200">
                         <Icon name="sync" size="sm" />
                       </span>
                       <span class="flex-1 text-left">{{ t('admin.accounts.syncFromCrs') }}</span>
                     </button>
                     <button class="account-tools-menu-item" @click="openImportData">
-                      <span class="account-tools-menu-icon bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-300">
+                      <span class="account-tools-menu-icon bg-[#f3f1ee] text-[#5f5b57] dark:bg-dark-700 dark:text-gray-200">
                         <Icon name="upload" size="sm" />
                       </span>
                       <span class="flex-1 text-left">{{ t('admin.accounts.dataImport') }}</span>
                     </button>
                     <button class="account-tools-menu-item" @click="openExportDataDialogFromMenu">
-                      <span class="account-tools-menu-icon bg-violet-50 text-violet-600 dark:bg-violet-900/30 dark:text-violet-300">
+                      <span class="account-tools-menu-icon bg-[#f1efff] text-[#6b5ce7] dark:bg-violet-500/20 dark:text-violet-200">
                         <Icon name="download" size="sm" />
                       </span>
                       <span class="flex-1 text-left">
@@ -107,7 +107,7 @@
                       </span>
                       <span
                         v-if="selIds.length"
-                        class="rounded-full bg-primary-100 px-2 py-0.5 text-xs font-medium text-primary-700 dark:bg-primary-900/40 dark:text-primary-300"
+                        class="rounded-full bg-[#f1efff] px-2 py-0.5 text-xs font-medium text-[#6b5ce7] dark:bg-violet-500/20 dark:text-violet-200"
                       >
                         {{ t('admin.accounts.selectedCount', { count: selIds.length }) }}
                       </span>
@@ -120,7 +120,7 @@
                       </div>
                     </div>
                     <button class="account-tools-menu-item" @click="openErrorPassthrough">
-                      <span class="account-tools-menu-icon bg-amber-50 text-amber-600 dark:bg-amber-900/30 dark:text-amber-300">
+                      <span class="account-tools-menu-icon bg-[#f3f1ee] text-[#5f5b57] dark:bg-dark-700 dark:text-gray-200">
                         <Icon name="shield" size="sm" />
                       </span>
                       <span class="flex-1 text-left">{{ t('admin.errorPassthrough.title') }}</span>
@@ -160,7 +160,7 @@
         </div>
         <div
           v-if="hasPendingListSync"
-          class="mt-2 flex items-center justify-between rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:border-amber-700/40 dark:bg-amber-900/20 dark:text-amber-200"
+          class="mt-2 flex items-center justify-between rounded-lg border border-[#eadccf] bg-[#fff4dc] px-3 py-2 text-sm text-[#8a5a00] dark:border-amber-700/40 dark:bg-amber-900/20 dark:text-amber-200"
         >
           <span>{{ t('admin.accounts.listPendingSyncHint') }}</span>
           <button
@@ -308,7 +308,7 @@
                 <span :class="proxyExpiryBadge(row.proxy)">{{ proxyExpiryText(row.proxy) }}</span>
               </div>
               <div v-if="row.proxy_fallback_origin_id" class="flex items-center gap-1">
-                <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200" :title="t('admin.accounts.fallbackActiveTip', { origin: row.proxy_fallback_origin_name })">
+                <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-[#fff4dc] text-[#8a5a00] dark:bg-yellow-900 dark:text-yellow-200" :title="t('admin.accounts.fallbackActiveTip', { origin: row.proxy_fallback_origin_name })">
                   {{ t('admin.accounts.fallbackActive') }}
                 </span>
                 <button class="text-xs px-1.5 py-0.5 rounded border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700" @click="onRevertFallback(row)">{{ t('admin.accounts.revertProxy') }}</button>
@@ -358,13 +358,13 @@
               <div v-if="isExpired(value) || (row.auto_pause_on_expired && value)" class="flex items-center gap-1">
                 <span
                   v-if="isExpired(value)"
-                  class="inline-flex items-center rounded-md bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700 dark:bg-amber-900/30 dark:text-amber-300"
+                  class="inline-flex items-center rounded-md bg-[#fff4dc] px-2 py-0.5 text-xs font-medium text-[#8a5a00] dark:bg-amber-500/20 dark:text-amber-200"
                 >
                   {{ t('admin.accounts.expired') }}
                 </span>
                 <span
                   v-if="row.auto_pause_on_expired && value"
-                  class="inline-flex items-center rounded-md bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300"
+                  class="inline-flex items-center rounded-md bg-[#eaf7f1] px-2 py-0.5 text-xs font-medium text-[#0f8f6a] dark:bg-emerald-500/20 dark:text-emerald-200"
                 >
                   {{ t('admin.accounts.autoPauseOnExpired') }}
                 </span>
@@ -377,7 +377,7 @@
                 <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" /></svg>
                 <span class="text-xs">{{ t('common.edit') }}</span>
               </button>
-              <button @click="handleDelete(row)" class="flex flex-col items-center gap-0.5 rounded-lg p-1.5 text-gray-500 transition-colors hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20 dark:hover:text-red-400">
+              <button @click="handleDelete(row)" class="flex flex-col items-center gap-0.5 rounded-lg p-1.5 text-gray-500 transition-colors hover:bg-[#fbe7df] hover:text-[#873628] dark:hover:bg-red-500/20 dark:hover:text-red-200">
                 <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg>
                 <span class="text-xs">{{ t('common.delete') }}</span>
               </button>
@@ -478,7 +478,7 @@ const dataTableRef = ref<InstanceType<typeof DataTable> | null>(null)
 type AccountBulkEditTarget =
   | {
       mode: 'selected'
-      accountIds: number[]
+      accountIds: string[]
       selectedPlatforms: AccountPlatform[]
       selectedTypes: AccountType[]
     }
@@ -540,7 +540,7 @@ const statsAcc = ref<Account | null>(null)
 const showSchedulePanel = ref(false)
 const scheduleAcc = ref<Account | null>(null)
 const scheduleModelOptions = ref<SelectOption[]>([])
-const togglingSchedulable = ref<number | null>(null)
+const togglingSchedulable = ref<string | number | null>(null)
 const menu = reactive<{show:boolean, acc:Account|null, pos:{top:number, left:number}|null}>({ show: false, acc: null, pos: null })
 const exportingData = ref(false)
 
@@ -859,18 +859,18 @@ const {
   toggleVisible,
   selectVisible: selectPage,
   batchUpdate
-} = useTableSelection<Account>({
+} = useTableSelection<Account, string>({
   rows: accounts,
   getId: (account) => account.id
 })
 
-const swipeVirtualContext: SwipeSelectVirtualContext = {
+const swipeVirtualContext: SwipeSelectVirtualContext<string> = {
   getVirtualizer: () => dataTableRef.value?.virtualizer ?? null,
   getSortedData: () => dataTableRef.value?.sortedData ?? accounts.value,
   getRowId: (row: any) => row.id,
 }
 
-useSwipeSelect(accountTableRef, {
+useSwipeSelect<string>(accountTableRef, {
   isSelected,
   select,
   deselect,
@@ -1218,14 +1218,14 @@ function getOpenAICompactMeta(row: any): { label: string; className: string; dot
     case 'active':
       return {
         label: t('admin.accounts.openai.compactSupported'),
-        className: 'text-emerald-600 dark:text-emerald-300',
-        dotClass: 'bg-emerald-500 shadow-[0_0_0_2px_rgba(16,185,129,0.14)]'
+        className: 'text-[#0f8f6a] dark:text-emerald-200',
+        dotClass: 'bg-[#0f8f6a] shadow-[0_0_0_2px_rgba(15,143,106,0.14)]'
       }
     case 'blocked':
       return {
         label: t('admin.accounts.openai.compactUnsupported'),
-        className: 'text-rose-600 dark:text-rose-300',
-        dotClass: 'bg-rose-500 shadow-[0_0_0_2px_rgba(244,63,94,0.14)]'
+        className: 'text-[#873628] dark:text-red-200',
+        dotClass: 'bg-[#c45b45] shadow-[0_0_0_2px_rgba(196,91,69,0.14)]'
       }
     case 'auto':
       return {
@@ -1247,9 +1247,9 @@ function getOpenAICompactTitle(row: any): string {
 function getAntigravityTierClass(row: any): string {
   const tier = getAntigravityTierFromRow(row)
   switch (tier) {
-    case 'free-tier': return 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300'
-    case 'g1-pro-tier': return 'bg-blue-100 text-blue-600 dark:bg-blue-900/40 dark:text-blue-300'
-    case 'g1-ultra-tier': return 'bg-purple-100 text-purple-600 dark:bg-purple-900/40 dark:text-purple-300'
+    case 'free-tier': return 'bg-[#f3f1ee] text-[#5f5b57] dark:bg-gray-700 dark:text-gray-300'
+    case 'g1-pro-tier': return 'bg-[#f1efff] text-[#6b5ce7] dark:bg-violet-500/20 dark:text-violet-200'
+    case 'g1-ultra-tier': return 'bg-[#f1efff] text-[#6b5ce7] dark:bg-violet-500/20 dark:text-violet-200'
     default: return ''
   }
 }
@@ -1385,7 +1385,7 @@ const handleBulkRefreshToken = async () => {
     appStore.showError(String(error))
   }
 }
-const updateSchedulableInList = (accountIds: number[], schedulable: boolean) => {
+const updateSchedulableInList = (accountIds: string[], schedulable: boolean) => {
   if (accountIds.length === 0) return
   const idSet = new Set(accountIds)
   accounts.value = accounts.value.map((account) => (idSet.has(account.id) ? { ...account, schedulable } : account))
@@ -1394,14 +1394,14 @@ const normalizeBulkSchedulableResult = (
   result: {
     success?: number
     failed?: number
-    success_ids?: number[]
-    failed_ids?: number[]
-    results?: Array<{ account_id: number; success: boolean }>
+    success_ids?: Array<string | number>
+    failed_ids?: Array<string | number>
+    results?: Array<{ account_id: string | number; success: boolean }>
   },
-  accountIds: number[]
+  accountIds: string[]
 ) => {
-  const responseSuccessIds = Array.isArray(result.success_ids) ? result.success_ids : []
-  const responseFailedIds = Array.isArray(result.failed_ids) ? result.failed_ids : []
+  const responseSuccessIds = Array.isArray(result.success_ids) ? result.success_ids.map(String) : []
+  const responseFailedIds = Array.isArray(result.failed_ids) ? result.failed_ids.map(String) : []
   if (responseSuccessIds.length > 0 || responseFailedIds.length > 0) {
     return {
       successIds: responseSuccessIds,
@@ -1415,8 +1415,8 @@ const normalizeBulkSchedulableResult = (
 
   const results = Array.isArray(result.results) ? result.results : []
   if (results.length > 0) {
-    const successIds = results.filter(item => item.success).map(item => item.account_id)
-    const failedIds = results.filter(item => !item.success).map(item => item.account_id)
+    const successIds = results.filter(item => item.success).map(item => String(item.account_id))
+    const failedIds = results.filter(item => !item.success).map(item => String(item.account_id))
     return {
       successIds,
       failedIds,
@@ -1578,7 +1578,7 @@ const accountMatchesCurrentFilters = (account: Account) => {
     const groupIds = account.group_ids ?? account.groups?.map((group) => group.id) ?? []
     if (filters.group === ACCOUNT_UNGROUPED_GROUP_QUERY_VALUE) {
       if (groupIds.length > 0) return false
-    } else if (!groupIds.includes(Number(filters.group))) {
+    } else if (!groupIds.some((id) => String(id) === String(filters.group))) {
       return false
     }
   }

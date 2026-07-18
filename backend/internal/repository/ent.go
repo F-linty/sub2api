@@ -64,6 +64,15 @@ func InitEnt(cfg *config.Config) (*ent.Client, *sql.DB, error) {
 	}
 	applyDBPoolSettings(drv.DB(), cfg)
 
+	dialectCtx, dialectCancel := context.WithTimeout(context.Background(), 15*time.Second)
+	databaseDialect, err := ResolveDatabaseDialect(dialectCtx, drv.DB(), &cfg.Database)
+	dialectCancel()
+	if err != nil {
+		_ = drv.Close()
+		return nil, nil, err
+	}
+	SetCurrentDatabaseDialect(databaseDialect)
+
 	// 确保数据库 schema 已准备就绪。
 	// SQL 迁移文件是 schema 的权威来源（source of truth）。
 	// 这种方式比 Ent 的自动迁移更可控，支持复杂的迁移场景。

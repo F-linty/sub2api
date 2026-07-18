@@ -4,7 +4,7 @@ export type ModelsListCandidatesMode = "create" | "edit";
 
 export interface ModelsListCandidatesRequest {
   mode: ModelsListCandidatesMode;
-  groupID: number;
+  groupID: string | number;
   platform: GroupPlatform;
 }
 
@@ -16,7 +16,7 @@ export interface ModelsListCandidatesTracker {
 export const createModelsListCandidatesTracker = (): ModelsListCandidatesTracker => {
   let currentRequestID = 0;
   const currentByMode: Partial<Record<ModelsListCandidatesMode, {
-    id: number;
+    id: string | number;
     request: ModelsListCandidatesRequest;
   }>> = {};
 

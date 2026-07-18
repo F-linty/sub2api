@@ -35,7 +35,7 @@ func TestAccountHandlerListIncludesCreatedAt(t *testing.T) {
 	var payload struct {
 		Data struct {
 			Items []struct {
-				ID        int64  `json:"id"`
+				ID        string `json:"id"`
 				CreatedAt string `json:"created_at"`
 			} `json:"items"`
 		} `json:"data"`
@@ -99,7 +99,7 @@ func TestAccountHandlerListReturnsSchedulerScoresPerGroup(t *testing.T) {
 	var payload struct {
 		Data struct {
 			Items []struct {
-				ID             int64 `json:"id"`
+				ID             string `json:"id"`
 				SchedulerScore struct {
 					BaseScore float64 `json:"base_score"`
 				} `json:"scheduler_score"`
@@ -116,7 +116,7 @@ func TestAccountHandlerListReturnsSchedulerScoresPerGroup(t *testing.T) {
 	require.Len(t, payload.Data.Items, 2)
 
 	var high, low *struct {
-		ID             int64 `json:"id"`
+		ID             string `json:"id"`
 		SchedulerScore struct {
 			BaseScore float64 `json:"base_score"`
 		} `json:"scheduler_score"`
@@ -130,9 +130,9 @@ func TestAccountHandlerListReturnsSchedulerScoresPerGroup(t *testing.T) {
 	for i := range payload.Data.Items {
 		item := &payload.Data.Items[i]
 		switch item.ID {
-		case 101:
+		case "101":
 			high = item
-		case 102:
+		case "102":
 			low = item
 		}
 	}
@@ -232,7 +232,7 @@ func TestAccountHandlerListKeepsSchedulerScoreScopedToFilter(t *testing.T) {
 	var payload struct {
 		Data struct {
 			Items []struct {
-				ID             int64 `json:"id"`
+				ID             string `json:"id"`
 				SchedulerScore struct {
 					BaseScore float64 `json:"base_score"`
 				} `json:"scheduler_score"`
@@ -246,7 +246,7 @@ func TestAccountHandlerListKeepsSchedulerScoreScopedToFilter(t *testing.T) {
 	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &payload))
 	require.Len(t, payload.Data.Items, 1)
 	item := payload.Data.Items[0]
-	require.Equal(t, int64(201), item.ID)
+	require.Equal(t, "201", item.ID)
 	require.Len(t, item.SchedulerScores, 1)
 	require.Equal(t, groupID, *item.SchedulerScores[0].GroupID)
 	require.Equal(t, item.SchedulerScores[0].BaseScore, item.SchedulerScore.BaseScore)
@@ -290,7 +290,7 @@ func TestAccountHandlerListSchedulerScoreIgnoresPagination(t *testing.T) {
 	var payload struct {
 		Data struct {
 			Items []struct {
-				ID             int64 `json:"id"`
+				ID             string `json:"id"`
 				SchedulerScore struct {
 					BaseScore float64 `json:"base_score"`
 				} `json:"scheduler_score"`
@@ -303,7 +303,7 @@ func TestAccountHandlerListSchedulerScoreIgnoresPagination(t *testing.T) {
 	}
 	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &payload))
 	require.Len(t, payload.Data.Items, 1)
-	require.Equal(t, int64(301), payload.Data.Items[0].ID)
+	require.Equal(t, "301", payload.Data.Items[0].ID)
 	require.Less(t, payload.Data.Items[0].SchedulerScore.BaseScore, 3.75)
 	require.Empty(t, payload.Data.Items[0].SchedulerScores)
 }

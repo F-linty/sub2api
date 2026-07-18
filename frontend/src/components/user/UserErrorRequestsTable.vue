@@ -193,9 +193,9 @@ function requestTypeBadge(row: UserErrorRequest): { label: string; className: st
 }
 
 const showDetail = ref(false)
-const selectedId = ref<number | null>(null)
+const selectedId = ref<string | number | null>(null)
 
-function openDetail(id: number) {
+function openDetail(id: string | number) {
   selectedId.value = id
   showDetail.value = true
 }

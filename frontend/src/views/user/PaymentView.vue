@@ -343,7 +343,7 @@ interface WeixinJSBridgeLike {
 
 function emptyPaymentState(): PaymentRecoverySnapshot {
   return {
-    orderId: 0,
+    orderId: '',
     amount: 0,
     qrCode: '',
     expiresAt: '',
@@ -418,7 +418,7 @@ function resetPayment() {
 
 async function redirectToPaymentResult(state: PaymentRecoverySnapshot): Promise<void> {
   const query: Record<string, string | undefined> = {}
-  if (state.orderId > 0) {
+  if (String(state.orderId || '').trim()) {
     query.order_id = String(state.orderId)
   }
   if (state.outTradeNo) {
@@ -435,7 +435,7 @@ async function redirectToPaymentResult(state: PaymentRecoverySnapshot): Promise<
 
 function buildWechatOAuthAuthorizeUrl(
   authorizeUrl: string,
-  context: { paymentType: string; orderType: OrderType; planId?: number; orderAmount: number },
+  context: { paymentType: string; orderType: OrderType; planId?: string | number; orderAmount: number },
 ): string {
   const normalizedUrl = authorizeUrl.trim()
   if (!normalizedUrl || typeof window === 'undefined') {
@@ -710,7 +710,7 @@ const planTextClass = computed(() => platformTextClass(selectedPlan.value?.group
 
 // Renewal modal state
 const showRenewalModal = ref(false)
-const renewGroupId = ref<number | null>(null)
+const renewGroupId = ref<string | number | null>(null)
 const renewalPlans = computed(() => {
   if (renewGroupId.value == null) return []
   return checkout.value.plans.filter(p => p.group_id === renewGroupId.value)
@@ -759,7 +759,7 @@ async function confirmSubscribe() {
   await createOrder(selectedPlan.value.price, 'subscription', selectedPlan.value.id)
 }
 
-async function createOrder(orderAmount: number, orderType: OrderType, planId?: number, options: CreateOrderOptions = {}) {
+async function createOrder(orderAmount: number, orderType: OrderType, planId?: string | number, options: CreateOrderOptions = {}) {
   submitting.value = true
   errorMessage.value = ''
   errorHintMessage.value = ''
@@ -946,7 +946,7 @@ async function createOrder(orderAmount: number, orderType: OrderType, planId?: n
 interface MobileQrFallbackContext {
   orderAmount: number
   orderType: OrderType
-  planId?: number
+  planId?: string | number
   paymentType: string
   attempted: boolean
 }
@@ -1135,8 +1135,8 @@ onMounted(async () => {
     if (route.query.tab === 'subscription') {
       activeTab.value = 'subscription'
       if (route.query.group) {
-        const groupId = Number(route.query.group)
-        const groupPlans = checkout.value.plans.filter(p => p.group_id === groupId)
+        const groupId = String(route.query.group)
+        const groupPlans = checkout.value.plans.filter(p => String(p.group_id) === groupId)
         if (groupPlans.length === 1) {
           selectedPlan.value = groupPlans[0]
         } else if (groupPlans.length > 1) {

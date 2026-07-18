@@ -59,7 +59,7 @@ const props = defineProps<{
   window: '7d' | '15d' | '30d'
   countdownSeconds: number
   loading: boolean
-  detailCache: Record<number, UserMonitorDetail>
+  detailCache: Record<string | number, UserMonitorDetail>
 }>()
 
 const emit = defineEmits<{

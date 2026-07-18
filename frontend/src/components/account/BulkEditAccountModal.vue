@@ -1293,7 +1293,7 @@ import {
 import type { OpenAIWSMode } from '@/utils/openaiWsMode'
 interface Props {
   show: boolean
-  accountIds: number[]
+  accountIds: string[]
   selectedPlatforms: AccountPlatform[]
   selectedTypes: AccountType[]
   target?: {
@@ -1458,13 +1458,13 @@ const fillHeaderOverrideTemplate = () => {
   }
   headerOverrideRows.value = rows
 }
-const proxyId = ref<number | null>(null)
+const proxyId = ref<string | number | null>(null)
 const concurrency = ref(1)
 const loadFactor = ref<number | null>(null)
 const priority = ref(1)
 const rateMultiplier = ref(1)
 const status = ref<'active' | 'inactive'>('active')
-const groupIds = ref<number[]>([])
+const groupIds = ref<(string | number)[]>([])
 const openaiPassthroughEnabled = ref(false)
 const openaiOAuthResponsesWebSocketV2Mode = ref<OpenAIWSMode>(OPENAI_WS_MODE_OFF)
 const openaiAPIKeyResponsesWebSocketV2Mode = ref<OpenAIWSMode>(OPENAI_WS_MODE_OFF)

@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/Wei-Shaw/sub2api/internal/pkg/dbdialect"
 	"github.com/Wei-Shaw/sub2api/internal/service"
 )
 
@@ -31,7 +32,7 @@ func (r *schedulerOutboxRepository) ListAfterAndReleaseDedup(ctx context.Context
 	if limit <= 0 {
 		limit = 100
 	}
-	rows, err := r.db.QueryContext(ctx, `
+	query := `
 		WITH selected AS MATERIALIZED (
 			SELECT id, event_type, account_id, group_id, payload, created_at
 			FROM scheduler_outbox
@@ -51,7 +52,31 @@ func (r *schedulerOutboxRepository) ListAfterAndReleaseDedup(ctx context.Context
 		FROM selected AS s
 		CROSS JOIN (SELECT COUNT(*) FROM released) AS release_barrier
 		ORDER BY s.id ASC
-	`, afterID, limit)
+	`
+	if !dbdialect.Current().SupportsMaterializedCTE() {
+		query = `
+			WITH selected AS (
+				SELECT id, event_type, account_id, group_id, payload, created_at
+				FROM scheduler_outbox
+				WHERE id > $1
+				ORDER BY id ASC
+				LIMIT $2
+				FOR UPDATE
+			), released AS (
+				UPDATE scheduler_outbox AS o
+				SET dedup_key = NULL
+				FROM selected AS s
+				WHERE o.id = s.id
+					AND o.dedup_key IS NOT NULL
+				RETURNING o.id
+			)
+			SELECT s.id, s.event_type, s.account_id, s.group_id, s.payload, s.created_at
+			FROM selected AS s
+			CROSS JOIN (SELECT COUNT(*) FROM released) AS release_barrier
+			ORDER BY s.id ASC
+		`
+	}
+	rows, err := r.db.QueryContext(ctx, query, afterID, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -150,6 +175,10 @@ func (r *schedulerOutboxRepository) DeleteConsumedUpTo(ctx context.Context, wate
 }
 
 func (r *schedulerOutboxRepository) TryAcquireCleanupLock(ctx context.Context) (service.SchedulerOutboxCleanupLease, bool, error) {
+	if !dbdialect.Current().SupportsAdvisoryLocks() {
+		return nil, false, nil
+	}
+
 	conn, err := r.db.Conn(ctx)
 	if err != nil {
 		return nil, false, err
@@ -169,6 +198,11 @@ func (r *schedulerOutboxRepository) TryAcquireCleanupLock(ctx context.Context) (
 
 func (l *schedulerOutboxCleanupLease) Release() {
 	if l == nil || l.conn == nil {
+		return
+	}
+	if !dbdialect.Current().SupportsAdvisoryLocks() {
+		_ = l.conn.Close()
+		l.conn = nil
 		return
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
@@ -204,6 +238,13 @@ func enqueueSchedulerOutbox(ctx context.Context, exec sqlExecutor, eventType str
 			VALUES ($1, $2, $3, $4, $5)
 			ON CONFLICT (dedup_key) WHERE dedup_key IS NOT NULL DO NOTHING
 		`
+		if !dbdialect.Current().SupportsPartialConflictTarget() {
+			query = `
+				INSERT INTO scheduler_outbox (event_type, account_id, group_id, payload, dedup_key)
+				VALUES ($1, $2, $3, $4, $5)
+				ON CONFLICT DO NOTHING
+			`
+		}
 		args = append(args, dedupKey)
 	}
 	_, err := exec.ExecContext(ctx, query, args...)

@@ -7363,6 +7363,7 @@ import type {
 } from "@/api/admin/settings";
 import type {
   AdminGroup,
+  EntityID,
   LoginAgreementDocument,
   NotifyEmailEntry,
   Proxy,
@@ -7997,7 +7998,7 @@ function resetClaudeOAuthSystemPromptBlocks(): void {
 
 
 interface DefaultSubscriptionGroupOption {
-  value: number;
+  value: EntityID;
   label: string;
   description: string | null;
   platform: AdminGroup["platform"];
@@ -8440,8 +8441,8 @@ const webSearchConfig = reactive<WebSearchEmulationConfig>({
   providers: [],
 });
 
-const expandedProviders = reactive<Record<number, boolean>>({});
-const apiKeyVisible = reactive<Record<number, boolean>>({});
+const expandedProviders = reactive<Record<string | number, boolean>>({});
+const apiKeyVisible = reactive<Record<string | number, boolean>>({});
 const wsTestQuery = ref("");
 const wsTestLoading = ref(false);
 const wsTestResult = ref<WebSearchTestResult | null>(null);
@@ -8459,8 +8460,8 @@ function toggleProviderExpand(idx: number) {
 function removeWebSearchProvider(idx: number) {
   webSearchConfig.providers.splice(idx, 1);
   // Re-index expandedProviders and apiKeyVisible after removal
-  const newExpanded: Record<number, boolean> = {};
-  const newVisible: Record<number, boolean> = {};
+  const newExpanded: Record<string | number, boolean> = {};
+  const newVisible: Record<string | number, boolean> = {};
   for (let i = 0; i < webSearchConfig.providers.length; i++) {
     const oldIdx = i >= idx ? i + 1 : i;
     newExpanded[i] = expandedProviders[oldIdx] ?? false;
@@ -9194,10 +9195,10 @@ async function loadSubscriptionGroups() {
 }
 
 function findNextAvailableSubscriptionGroup(
-  existingGroupIDs: number[],
+  existingGroupIDs: EntityID[],
 ): AdminGroup | undefined {
-  const existing = new Set(existingGroupIDs);
-  return subscriptionGroups.value.find((group) => !existing.has(group.id));
+  const existing = new Set(existingGroupIDs.map((id) => String(id)));
+  return subscriptionGroups.value.find((group) => !existing.has(String(group.id)));
 }
 
 function addDefaultSubscription() {
@@ -9238,7 +9239,7 @@ function removeAuthSourceDefaultSubscription(
 function findDuplicateDefaultSubscription(
   subscriptions: DefaultSubscriptionSetting[],
 ): DefaultSubscriptionSetting | undefined {
-  const seenGroupIDs = new Set<number>();
+  const seenGroupIDs = new Set<string | number>();
 
   return subscriptions.find((item) => {
     if (seenGroupIDs.has(item.group_id)) {
@@ -10279,7 +10280,7 @@ const providers = ref<ProviderInstance[]>([]);
 const showProviderDialog = ref(false);
 const showDeleteProviderDialog = ref(false);
 const editingProvider = ref<ProviderInstance | null>(null);
-const deletingProviderId = ref<number | null>(null);
+const deletingProviderId = ref<string | number | null>(null);
 const providerDialogRef = ref<InstanceType<
   typeof PaymentProviderDialog
 > | null>(null);
@@ -10556,7 +10557,7 @@ function confirmDeleteProvider(provider: ProviderInstance) {
 }
 
 async function handleReorderProviders(
-  updates: { id: number; sort_order: number }[],
+  updates: { id: string | number; sort_order: number }[],
 ) {
   try {
     await Promise.all(
@@ -10608,7 +10609,7 @@ interface AffiliateState {
   page: number;
   pageSize: number;
   search: string;
-  selected: number[];
+  selected: EntityID[];
   searchTimer: number | null;
 }
 
@@ -10776,8 +10777,8 @@ function toggleAffiliateSelectAll(e: Event) {
   affiliateState.selected = checked ? affiliateState.entries.map((entry) => entry.user_id) : [];
 }
 
-function toggleAffiliateSelect(userId: number) {
-  const idx = affiliateState.selected.indexOf(userId);
+function toggleAffiliateSelect(userId: string | number) {
+  const idx = affiliateState.selected.findIndex((id) => String(id) === String(userId));
   if (idx >= 0) affiliateState.selected.splice(idx, 1);
   else affiliateState.selected.push(userId);
 }
@@ -10859,7 +10860,7 @@ async function submitAffiliateModal() {
     return;
   }
 
-  let userId: number;
+  let userId: string | number;
   if (affiliateModal.mode === "add") {
     userId = affiliateModal.selectedUser!.id;
   } else {
@@ -10977,15 +10978,12 @@ watch(
 
 /* ============ 系统设置 Tab 导航 ============ */
 .settings-tabs-shell {
-  @apply sticky z-20 -mx-1 rounded-2xl border border-white/80 bg-white/90 p-1.5 backdrop-blur-xl;
+  @apply sticky z-20 border-b border-gray-200 bg-white/95 backdrop-blur-xl dark:border-dark-700 dark:bg-dark-900/95;
   top: 4.75rem;
-  box-shadow:
-    0 12px 28px rgb(15 23 42 / 0.07),
-    0 1px 0 rgb(255 255 255 / 0.9) inset;
 }
 
 .settings-tabs-scroll {
-  @apply overflow-x-auto;
+  @apply -mx-1 overflow-x-auto px-1;
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
@@ -10999,7 +10997,7 @@ watch(
 }
 
 .settings-tab {
-  @apply relative isolate flex h-10 min-w-[6.75rem] shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-xl border border-transparent px-3 text-sm font-medium text-gray-600 outline-none transition-colors duration-200 ease-out dark:text-gray-300;
+  @apply relative flex h-10 min-w-[6.75rem] shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-md border border-transparent px-3 text-sm font-medium text-gray-500 outline-none transition-colors duration-150 ease-out dark:text-gray-400;
 }
 
 @media (min-width: 768px) {
@@ -11012,49 +11010,35 @@ watch(
   }
 
   .settings-tab-icon {
-    @apply h-6 w-6;
+    @apply h-5 w-5;
   }
 }
 
 .settings-tab::before {
-  @apply absolute inset-0 -z-10 rounded-xl opacity-0 transition-opacity duration-200;
+  @apply absolute inset-x-2 bottom-[-1px] h-px opacity-0 transition-opacity duration-150;
   content: "";
-  background: linear-gradient(135deg, rgb(248 250 252 / 0.95), rgb(241 245 249 / 0.8));
+  background: rgb(248 113 22);
 }
 
-.settings-tab:hover::before,
-.settings-tab:focus-visible::before {
-  opacity: 1;
+.settings-tab:hover,
+.settings-tab:focus-visible {
+  @apply bg-gray-50 text-gray-800 dark:bg-dark-800/80 dark:text-gray-100;
 }
 
 .settings-tab:focus-visible {
-  @apply ring-2 ring-primary-500/40 ring-offset-2 ring-offset-white dark:ring-offset-dark-900;
+  @apply ring-2 ring-primary-500/35 ring-offset-1 ring-offset-white dark:ring-offset-dark-900;
 }
 
 .settings-tab-active {
-  @apply border-primary-200/80 bg-white text-primary-700 shadow-sm dark:border-primary-400/30 dark:bg-dark-700/95 dark:text-primary-200;
-  box-shadow:
-    0 8px 18px rgb(15 23 42 / 0.08),
-    0 1px 0 rgb(255 255 255 / 0.92) inset;
+  @apply border-gray-200 bg-gray-50 text-gray-950 dark:border-dark-600 dark:bg-dark-800 dark:text-white;
 }
 
 .settings-tab-active::before {
-  opacity: 0;
-}
-
-.settings-tab-active::after {
-  position: absolute;
-  right: 0.75rem;
-  bottom: 0.25rem;
-  left: 0.75rem;
-  height: 2px;
-  border-radius: 9999px;
-  content: "";
-  background: linear-gradient(90deg, #14b8a6, #0ea5e9);
+  opacity: 1;
 }
 
 .settings-tab-icon {
-  @apply flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-gray-500 transition-colors duration-200 dark:text-gray-400;
+  @apply flex h-5 w-5 shrink-0 items-center justify-center text-gray-400 transition-colors duration-150 dark:text-gray-500;
 }
 
 .settings-tab:hover .settings-tab-icon,
@@ -11063,7 +11047,7 @@ watch(
 }
 
 .settings-tab-active .settings-tab-icon {
-  @apply bg-primary-50 text-primary-600 dark:bg-primary-400/10 dark:text-primary-300;
+  @apply text-primary-600 dark:text-primary-300;
 }
 
 .settings-tab-label {
@@ -11076,20 +11060,7 @@ watch(
    because Vue's scoped-CSS compiler was dropping the `:global(.dark) ...`
    rules in the production build, leaving inactive tabs unreadable on dark. */
 .dark .settings-tabs-shell {
-  border-color: rgb(51 65 85 / 0.65);
-  background: rgb(15 23 42 / 0.86);
-  box-shadow:
-    0 16px 36px rgb(0 0 0 / 0.28),
-    0 1px 0 rgb(255 255 255 / 0.06) inset;
-}
-
-.dark .settings-tab::before {
-  background: linear-gradient(135deg, rgb(30 41 59 / 0.9), rgb(51 65 85 / 0.62));
-}
-
-.dark .settings-tab-active {
-  box-shadow:
-    0 12px 26px rgb(0 0 0 / 0.22),
-    0 1px 0 rgb(255 255 255 / 0.08) inset;
+  border-color: rgb(51 65 85 / 0.72);
+  background: rgb(15 23 42 / 0.92);
 }
 </style>

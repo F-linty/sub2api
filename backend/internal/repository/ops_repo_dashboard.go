@@ -812,23 +812,54 @@ FROM usage_logs ul
 func (r *opsRepository) queryUsageLatency(ctx context.Context, filter *service.OpsDashboardFilter, start, end time.Time) (duration service.OpsPercentiles, ttft service.OpsPercentiles, ttftSampleCount int64, err error) {
 	join, where, args, _ := buildUsageWhere(filter, start, end, 1)
 	q := `
-SELECT
-  percentile_cont(0.50) WITHIN GROUP (ORDER BY duration_ms) FILTER (WHERE duration_ms IS NOT NULL) AS duration_p50,
-  percentile_cont(0.90) WITHIN GROUP (ORDER BY duration_ms) FILTER (WHERE duration_ms IS NOT NULL) AS duration_p90,
-  percentile_cont(0.95) WITHIN GROUP (ORDER BY duration_ms) FILTER (WHERE duration_ms IS NOT NULL) AS duration_p95,
-  percentile_cont(0.99) WITHIN GROUP (ORDER BY duration_ms) FILTER (WHERE duration_ms IS NOT NULL) AS duration_p99,
-  AVG(duration_ms) FILTER (WHERE duration_ms IS NOT NULL) AS duration_avg,
-  MAX(duration_ms) AS duration_max,
-  percentile_cont(0.50) WITHIN GROUP (ORDER BY first_token_ms) FILTER (WHERE first_token_ms IS NOT NULL) AS ttft_p50,
-  percentile_cont(0.90) WITHIN GROUP (ORDER BY first_token_ms) FILTER (WHERE first_token_ms IS NOT NULL) AS ttft_p90,
-  percentile_cont(0.95) WITHIN GROUP (ORDER BY first_token_ms) FILTER (WHERE first_token_ms IS NOT NULL) AS ttft_p95,
-  percentile_cont(0.99) WITHIN GROUP (ORDER BY first_token_ms) FILTER (WHERE first_token_ms IS NOT NULL) AS ttft_p99,
-  AVG(first_token_ms) FILTER (WHERE first_token_ms IS NOT NULL) AS ttft_avg,
-  MAX(first_token_ms) AS ttft_max,
-  COUNT(first_token_ms) AS ttft_sample_count
-FROM usage_logs ul
+WITH base AS (
+  SELECT duration_ms, first_token_ms
+  FROM usage_logs ul
 ` + join + `
-` + where
+` + where + `
+),
+duration_ranked AS (
+  SELECT
+    duration_ms::FLOAT8 AS v,
+    ROW_NUMBER() OVER (ORDER BY duration_ms) AS rn,
+    COUNT(*) OVER () AS cnt
+  FROM base
+  WHERE duration_ms IS NOT NULL
+),
+duration_agg AS (
+  SELECT
+    MIN(v) FILTER (WHERE rn::FLOAT8 >= cnt::FLOAT8 * 0.50) AS duration_p50,
+    MIN(v) FILTER (WHERE rn::FLOAT8 >= cnt::FLOAT8 * 0.90) AS duration_p90,
+    MIN(v) FILTER (WHERE rn::FLOAT8 >= cnt::FLOAT8 * 0.95) AS duration_p95,
+    MIN(v) FILTER (WHERE rn::FLOAT8 >= cnt::FLOAT8 * 0.99) AS duration_p99,
+    AVG(v) AS duration_avg,
+    MAX(v) AS duration_max
+  FROM duration_ranked
+),
+ttft_ranked AS (
+  SELECT
+    first_token_ms::FLOAT8 AS v,
+    ROW_NUMBER() OVER (ORDER BY first_token_ms) AS rn,
+    COUNT(*) OVER () AS cnt
+  FROM base
+  WHERE first_token_ms IS NOT NULL
+),
+ttft_agg AS (
+  SELECT
+    MIN(v) FILTER (WHERE rn::FLOAT8 >= cnt::FLOAT8 * 0.50) AS ttft_p50,
+    MIN(v) FILTER (WHERE rn::FLOAT8 >= cnt::FLOAT8 * 0.90) AS ttft_p90,
+    MIN(v) FILTER (WHERE rn::FLOAT8 >= cnt::FLOAT8 * 0.95) AS ttft_p95,
+    MIN(v) FILTER (WHERE rn::FLOAT8 >= cnt::FLOAT8 * 0.99) AS ttft_p99,
+    AVG(v) AS ttft_avg,
+    MAX(v) AS ttft_max,
+    COUNT(*) AS ttft_sample_count
+  FROM ttft_ranked
+)
+SELECT
+  duration_p50, duration_p90, duration_p95, duration_p99, duration_avg, duration_max,
+  ttft_p50, ttft_p90, ttft_p95, ttft_p99, ttft_avg, ttft_max, ttft_sample_count
+FROM duration_agg
+CROSS JOIN ttft_agg`
 
 	var dP50, dP90, dP95, dP99 sql.NullFloat64
 	var dAvg sql.NullFloat64

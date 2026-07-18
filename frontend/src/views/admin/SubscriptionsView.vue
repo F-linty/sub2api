@@ -761,7 +761,7 @@ import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAppStore } from '@/stores/app'
 import { adminAPI } from '@/api/admin'
-import type { UserSubscription, Group, GroupPlatform, SubscriptionType } from '@/types'
+import type { UserSubscription, EntityID, Group, GroupPlatform, SubscriptionType } from '@/types'
 import type { SimpleUser } from '@/api/admin/usage'
 import type { Column } from '@/components/common/types'
 import { formatDateOnly } from '@/utils/format'
@@ -940,7 +940,7 @@ const filters = reactive({
   status: 'active',
   group_id: '',
   platform: '',
-  user_id: null as number | null
+  user_id: null as EntityID | null
 })
 
 // Sorting state
@@ -969,8 +969,8 @@ const revokingSubscription = ref<UserSubscription | null>(null)
 const restoringSubscription = ref<UserSubscription | null>(null)
 
 const assignForm = reactive({
-  user_id: null as number | null,
-  group_id: null as number | null,
+  user_id: null as EntityID | null,
+  group_id: null as EntityID | null,
   validity_days: 30
 })
 
@@ -1026,7 +1026,7 @@ const loadSubscriptions = async () => {
       pagination.page_size,
       {
         status: (filters.status as any) || undefined,
-        group_id: filters.group_id ? parseInt(filters.group_id) : undefined,
+        group_id: filters.group_id || undefined,
         platform: filters.platform || undefined,
         user_id: filters.user_id || undefined,
         sort_by: sortState.sort_by,

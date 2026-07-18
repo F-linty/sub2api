@@ -72,7 +72,7 @@ export async function getAllWithCount(): Promise<Proxy[]> {
  * @param id - Proxy ID
  * @returns Proxy details
  */
-export async function getById(id: number): Promise<Proxy> {
+export async function getById(id: string | number): Promise<Proxy> {
   const { data } = await apiClient.get<Proxy>(`/admin/proxies/${id}`)
   return data
 }
@@ -93,7 +93,7 @@ export async function create(proxyData: CreateProxyRequest): Promise<Proxy> {
  * @param updates - Fields to update
  * @returns Updated proxy
  */
-export async function update(id: number, updates: UpdateProxyRequest): Promise<Proxy> {
+export async function update(id: string | number, updates: UpdateProxyRequest): Promise<Proxy> {
   const { data } = await apiClient.put<Proxy>(`/admin/proxies/${id}`, updates)
   return data
 }
@@ -103,7 +103,7 @@ export async function update(id: number, updates: UpdateProxyRequest): Promise<P
  * @param id - Proxy ID
  * @returns Success confirmation
  */
-export async function deleteProxy(id: number): Promise<{ message: string }> {
+export async function deleteProxy(id: string | number): Promise<{ message: string }> {
   const { data } = await apiClient.delete<{ message: string }>(`/admin/proxies/${id}`)
   return data
 }
@@ -114,7 +114,7 @@ export async function deleteProxy(id: number): Promise<{ message: string }> {
  * @param status - New status
  * @returns Updated proxy
  */
-export async function toggleStatus(id: number, status: 'active' | 'inactive'): Promise<Proxy> {
+export async function toggleStatus(id: string | number, status: 'active' | 'inactive'): Promise<Proxy> {
   return update(id, { status })
 }
 
@@ -123,7 +123,7 @@ export async function toggleStatus(id: number, status: 'active' | 'inactive'): P
  * @param id - Proxy ID
  * @returns Test result with IP info
  */
-export async function testProxy(id: number): Promise<{
+export async function testProxy(id: string | number): Promise<{
   success: boolean
   message: string
   latency_ms?: number
@@ -151,7 +151,7 @@ export async function testProxy(id: number): Promise<{
  * @param id - Proxy ID
  * @returns Quality check result
  */
-export async function checkProxyQuality(id: number): Promise<ProxyQualityCheckResult> {
+export async function checkProxyQuality(id: string | number): Promise<ProxyQualityCheckResult> {
   const { data } = await apiClient.post<ProxyQualityCheckResult>(`/admin/proxies/${id}/quality-check`)
   return data
 }
@@ -161,7 +161,7 @@ export async function checkProxyQuality(id: number): Promise<ProxyQualityCheckRe
  * @param id - Proxy ID
  * @returns Proxy usage statistics
  */
-export async function getStats(id: number): Promise<{
+export async function getStats(id: string | number): Promise<{
   total_accounts: number
   active_accounts: number
   total_requests: number
@@ -183,7 +183,7 @@ export async function getStats(id: number): Promise<{
  * @param id - Proxy ID
  * @returns List of accounts using the proxy
  */
-export async function getProxyAccounts(id: number): Promise<ProxyAccountSummary[]> {
+export async function getProxyAccounts(id: string | number): Promise<ProxyAccountSummary[]> {
   const { data } = await apiClient.get<ProxyAccountSummary[]>(`/admin/proxies/${id}/accounts`)
   return data
 }
@@ -212,19 +212,19 @@ export async function batchCreate(
   return data
 }
 
-export async function batchDelete(ids: number[]): Promise<{
+export async function batchDelete(ids: (string | number)[]): Promise<{
   deleted_ids: number[]
-  skipped: Array<{ id: number; reason: string }>
+  skipped: Array<{ id: string | number; reason: string }>
 }> {
   const { data } = await apiClient.post<{
     deleted_ids: number[]
-    skipped: Array<{ id: number; reason: string }>
+    skipped: Array<{ id: string | number; reason: string }>
   }>('/admin/proxies/batch-delete', { ids })
   return data
 }
 
 export async function exportData(options?: {
-  ids?: number[]
+  ids?: (string | number)[]
   filters?: {
     protocol?: string
     status?: 'active' | 'inactive' | 'expired'

@@ -144,7 +144,7 @@ const props = defineProps<{
   modelValue: string[]
   platform?: string
   platforms?: string[]
-  accountId?: number
+  accountId?: string | number
   syncCredentials?: {
     platform: string
     type: string

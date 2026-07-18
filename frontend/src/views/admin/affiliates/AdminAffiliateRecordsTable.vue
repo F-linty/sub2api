@@ -316,7 +316,7 @@ function formatDateTime(value: string | null | undefined): string {
   return value ? formatDisplayDateTime(value) : '-'
 }
 
-async function openUserOverview(userId: number) {
+async function openUserOverview(userId: string | number) {
   if (!userId) return
   overviewDialog.value = true
   overviewLoading.value = true

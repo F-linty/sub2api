@@ -31,7 +31,7 @@ export async function list(
   return data
 }
 
-export async function getById(id: number): Promise<PromoCode> {
+export async function getById(id: string | number): Promise<PromoCode> {
   const { data } = await apiClient.get<PromoCode>(`/admin/promo-codes/${id}`)
   return data
 }
@@ -41,18 +41,18 @@ export async function create(request: CreatePromoCodeRequest): Promise<PromoCode
   return data
 }
 
-export async function update(id: number, request: UpdatePromoCodeRequest): Promise<PromoCode> {
+export async function update(id: string | number, request: UpdatePromoCodeRequest): Promise<PromoCode> {
   const { data } = await apiClient.put<PromoCode>(`/admin/promo-codes/${id}`, request)
   return data
 }
 
-export async function deleteCode(id: number): Promise<{ message: string }> {
+export async function deleteCode(id: string | number): Promise<{ message: string }> {
   const { data } = await apiClient.delete<{ message: string }>(`/admin/promo-codes/${id}`)
   return data
 }
 
 export async function getUsages(
-  id: number,
+  id: string | number,
   page: number = 1,
   pageSize: number = 20
 ): Promise<BasePaginationResponse<PromoCodeUsage>> {

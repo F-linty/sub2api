@@ -44,7 +44,7 @@ export async function createDefinition(
  * Update an attribute definition
  */
 export async function updateDefinition(
-  id: number,
+  id: string | number,
   request: UpdateUserAttributeRequest
 ): Promise<UserAttributeDefinition> {
   const { data } = await apiClient.put<UserAttributeDefinition>(
@@ -57,7 +57,7 @@ export async function updateDefinition(
 /**
  * Delete an attribute definition
  */
-export async function deleteDefinition(id: number): Promise<{ message: string }> {
+export async function deleteDefinition(id: string | number): Promise<{ message: string }> {
   const { data } = await apiClient.delete<{ message: string }>(`/admin/user-attributes/${id}`)
   return data
 }
@@ -65,7 +65,7 @@ export async function deleteDefinition(id: number): Promise<{ message: string }>
 /**
  * Reorder attribute definitions
  */
-export async function reorderDefinitions(ids: number[]): Promise<{ message: string }> {
+export async function reorderDefinitions(ids: (string | number)[]): Promise<{ message: string }> {
   const { data } = await apiClient.put<{ message: string }>('/admin/user-attributes/reorder', {
     ids
   })
@@ -75,7 +75,7 @@ export async function reorderDefinitions(ids: number[]): Promise<{ message: stri
 /**
  * Get user's attribute values
  */
-export async function getUserAttributeValues(userId: number): Promise<UserAttributeValue[]> {
+export async function getUserAttributeValues(userId: string | number): Promise<UserAttributeValue[]> {
   const { data } = await apiClient.get<UserAttributeValue[]>(
     `/admin/users/${userId}/attributes`
   )
@@ -86,7 +86,7 @@ export async function getUserAttributeValues(userId: number): Promise<UserAttrib
  * Update user's attribute values (batch)
  */
 export async function updateUserAttributeValues(
-  userId: number,
+  userId: string | number,
   values: UserAttributeValuesMap
 ): Promise<{ message: string }> {
   const { data } = await apiClient.put<{ message: string }>(
@@ -100,14 +100,14 @@ export async function updateUserAttributeValues(
  * Batch response type
  */
 export interface BatchUserAttributesResponse {
-  attributes: Record<number, Record<number, string>>
+  attributes: Record<string | number, Record<string | number, string>>
 }
 
 /**
  * Get attribute values for multiple users
  */
 export async function getBatchUserAttributes(
-  userIds: number[]
+  userIds: (string | number)[]
 ): Promise<BatchUserAttributesResponse> {
   const { data } = await apiClient.post<BatchUserAttributesResponse>(
     '/admin/user-attributes/batch',

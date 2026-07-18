@@ -27,24 +27,24 @@ export interface AdminUsageStatsResponse {
 }
 
 export interface SimpleUser {
-  id: number
+  id: string | number
   email: string
   deleted: boolean
 }
 
 export interface SimpleApiKey {
-  id: number
+  id: string | number
   name: string
-  user_id: number
+  user_id: string | number
 }
 
 export interface UsageCleanupFilters {
   start_time: string
   end_time: string
-  user_id?: number
-  api_key_id?: number
-  account_id?: number
-  group_id?: number
+  user_id?: string | number
+  api_key_id?: string | number
+  account_id?: string | number
+  group_id?: string | number
   model?: string | null
   request_type?: UsageRequestType | null
   stream?: boolean | null
@@ -52,10 +52,10 @@ export interface UsageCleanupFilters {
 }
 
 export interface UsageCleanupTask {
-  id: number
+  id: string | number
   status: string
   filters: UsageCleanupFilters
-  created_by: number
+  created_by: string | number
   deleted_rows: number
   error_message?: string | null
   canceled_by?: number | null
@@ -69,10 +69,10 @@ export interface UsageCleanupTask {
 export interface CreateUsageCleanupTaskRequest {
   start_date: string
   end_date: string
-  user_id?: number
-  api_key_id?: number
-  account_id?: number
-  group_id?: number
+  user_id?: string | number
+  api_key_id?: string | number
+  account_id?: string | number
+  group_id?: string | number
   model?: string | null
   request_type?: UsageRequestType | null
   stream?: boolean | null
@@ -81,7 +81,7 @@ export interface CreateUsageCleanupTaskRequest {
 }
 
 export interface AdminUsageQueryParams extends UsageQueryParams {
-  user_id?: number
+  user_id?: string | number
   exact_total?: boolean
   billing_mode?: string
   sort_by?: string
@@ -116,10 +116,10 @@ export async function list(
  * @returns Usage statistics
  */
 export async function getStats(params: {
-  user_id?: number
-  api_key_id?: number
-  account_id?: number
-  group_id?: number
+  user_id?: string | number
+  api_key_id?: string | number
+  account_id?: string | number
+  group_id?: string | number
   model?: string
   request_type?: UsageRequestType
   stream?: boolean
@@ -153,7 +153,7 @@ export async function searchUsers(keyword: string): Promise<SimpleUser[]> {
  * @param keyword - Optional keyword to search in key name
  * @returns List of matching API keys (max 30)
  */
-export async function searchApiKeys(userId?: number, keyword?: string): Promise<SimpleApiKey[]> {
+export async function searchApiKeys(userId?: string | number, keyword?: string): Promise<SimpleApiKey[]> {
   const params: Record<string, unknown> = {}
   if (userId !== undefined) {
     params.user_id = userId
@@ -197,8 +197,8 @@ export async function createCleanupTask(payload: CreateUsageCleanupTaskRequest):
  * Cancel a usage cleanup task (admin only)
  * @param taskId - Task ID to cancel
  */
-export async function cancelCleanupTask(taskId: number): Promise<{ id: number; status: string }> {
-  const { data } = await apiClient.post<{ id: number; status: string }>(
+export async function cancelCleanupTask(taskId: string | number): Promise<{ id: string | number; status: string }> {
+  const { data } = await apiClient.post<{ id: string | number; status: string }>(
     `/admin/usage/cleanup-tasks/${taskId}/cancel`
   )
   return data

@@ -200,7 +200,7 @@ func TestUsageCleanupRepositoryClaimNextPendingTaskNone(t *testing.T) {
 	repo := &usageCleanupRepository{sql: db}
 
 	mock.ExpectQuery("UPDATE usage_cleanup_tasks").
-		WithArgs(service.UsageCleanupStatusPending, service.UsageCleanupStatusRunning, int64(1800), service.UsageCleanupStatusRunning).
+		WithArgs(service.UsageCleanupStatusPending, service.UsageCleanupStatusRunning, sqlmock.AnyArg(), service.UsageCleanupStatusRunning).
 		WillReturnRows(sqlmock.NewRows([]string{
 			"id", "status", "filters", "created_by", "deleted_rows", "error_message",
 			"started_at", "finished_at", "created_at", "updated_at",
@@ -239,7 +239,7 @@ func TestUsageCleanupRepositoryClaimNextPendingTask(t *testing.T) {
 	)
 
 	mock.ExpectQuery("UPDATE usage_cleanup_tasks").
-		WithArgs(service.UsageCleanupStatusPending, service.UsageCleanupStatusRunning, int64(1800), service.UsageCleanupStatusRunning).
+		WithArgs(service.UsageCleanupStatusPending, service.UsageCleanupStatusRunning, sqlmock.AnyArg(), service.UsageCleanupStatusRunning).
 		WillReturnRows(rows)
 
 	task, err := repo.ClaimNextPendingTask(context.Background(), 1800)
@@ -258,7 +258,7 @@ func TestUsageCleanupRepositoryClaimNextPendingTaskError(t *testing.T) {
 	repo := &usageCleanupRepository{sql: db}
 
 	mock.ExpectQuery("UPDATE usage_cleanup_tasks").
-		WithArgs(service.UsageCleanupStatusPending, service.UsageCleanupStatusRunning, int64(1800), service.UsageCleanupStatusRunning).
+		WithArgs(service.UsageCleanupStatusPending, service.UsageCleanupStatusRunning, sqlmock.AnyArg(), service.UsageCleanupStatusRunning).
 		WillReturnError(sql.ErrConnDone)
 
 	_, err := repo.ClaimNextPendingTask(context.Background(), 1800)
@@ -287,7 +287,7 @@ func TestUsageCleanupRepositoryClaimNextPendingTaskInvalidFilters(t *testing.T) 
 	)
 
 	mock.ExpectQuery("UPDATE usage_cleanup_tasks").
-		WithArgs(service.UsageCleanupStatusPending, service.UsageCleanupStatusRunning, int64(1800), service.UsageCleanupStatusRunning).
+		WithArgs(service.UsageCleanupStatusPending, service.UsageCleanupStatusRunning, sqlmock.AnyArg(), service.UsageCleanupStatusRunning).
 		WillReturnRows(rows)
 
 	_, err := repo.ClaimNextPendingTask(context.Background(), 1800)

@@ -82,7 +82,7 @@ export async function getByPlatform(platform: GroupPlatform): Promise<AdminGroup
  * @param id - Group ID
  * @returns Group details
  */
-export async function getById(id: number): Promise<AdminGroup> {
+export async function getById(id: string | number): Promise<AdminGroup> {
   const { data } = await apiClient.get<AdminGroup>(`/admin/groups/${id}`)
   return data
 }
@@ -92,7 +92,7 @@ export async function getById(id: number): Promise<AdminGroup> {
  * id=0 returns platform default models for create flow.
  */
 export async function getModelsListCandidates(
-  id: number,
+  id: string | number,
   platform?: GroupPlatform
 ): Promise<string[]> {
   const { data } = await apiClient.get<{ models: string[] }>(
@@ -120,7 +120,7 @@ export async function create(groupData: CreateGroupRequest): Promise<AdminGroup>
  * @param updates - Fields to update
  * @returns Updated group
  */
-export async function update(id: number, updates: UpdateGroupRequest): Promise<AdminGroup> {
+export async function update(id: string | number, updates: UpdateGroupRequest): Promise<AdminGroup> {
   const { data } = await apiClient.put<AdminGroup>(`/admin/groups/${id}`, updates)
   return data
 }
@@ -130,7 +130,7 @@ export async function update(id: number, updates: UpdateGroupRequest): Promise<A
  * @param id - Group ID
  * @returns Success confirmation
  */
-export async function deleteGroup(id: number): Promise<{ message: string }> {
+export async function deleteGroup(id: string | number): Promise<{ message: string }> {
   const { data } = await apiClient.delete<{ message: string }>(`/admin/groups/${id}`)
   return data
 }
@@ -141,7 +141,7 @@ export async function deleteGroup(id: number): Promise<{ message: string }> {
  * @param status - New status
  * @returns Updated group
  */
-export async function toggleStatus(id: number, status: 'active' | 'inactive'): Promise<AdminGroup> {
+export async function toggleStatus(id: string | number, status: 'active' | 'inactive'): Promise<AdminGroup> {
   return update(id, { status })
 }
 
@@ -150,7 +150,7 @@ export async function toggleStatus(id: number, status: 'active' | 'inactive'): P
  * @param id - Group ID
  * @returns Group usage statistics
  */
-export async function getStats(id: number): Promise<{
+export async function getStats(id: string | number): Promise<{
   total_api_keys: number
   active_api_keys: number
   total_requests: number
@@ -173,7 +173,7 @@ export async function getStats(id: number): Promise<{
  * @returns Paginated list of API keys in the group
  */
 export async function getGroupApiKeys(
-  id: number,
+  id: string | number,
   page: number = 1,
   pageSize: number = 20
 ): Promise<PaginatedResponse<any>> {
@@ -187,7 +187,7 @@ export async function getGroupApiKeys(
  * Rate multiplier entry for a user in a group
  */
 export interface GroupRateMultiplierEntry {
-  user_id: number
+  user_id: string | number
   user_name: string
   user_email: string
   user_notes: string
@@ -201,7 +201,7 @@ export interface GroupRateMultiplierEntry {
  * @param id - Group ID
  * @returns List of user rate multiplier entries
  */
-export async function getGroupRateMultipliers(id: number): Promise<GroupRateMultiplierEntry[]> {
+export async function getGroupRateMultipliers(id: string | number): Promise<GroupRateMultiplierEntry[]> {
   const { data } = await apiClient.get<GroupRateMultiplierEntry[]>(
     `/admin/groups/${id}/rate-multipliers`
   )
@@ -214,7 +214,7 @@ export async function getGroupRateMultipliers(id: number): Promise<GroupRateMult
  * @returns Success confirmation
  */
 export async function updateSortOrder(
-  updates: Array<{ id: number; sort_order: number }>
+  updates: Array<{ id: string | number; sort_order: number }>
 ): Promise<{ message: string }> {
   const { data } = await apiClient.put<{ message: string }>('/admin/groups/sort-order', {
     updates
@@ -227,7 +227,7 @@ export async function updateSortOrder(
  * @param id - Group ID
  * @returns Success confirmation
  */
-export async function clearGroupRateMultipliers(id: number): Promise<{ message: string }> {
+export async function clearGroupRateMultipliers(id: string | number): Promise<{ message: string }> {
   const { data } = await apiClient.delete<{ message: string }>(`/admin/groups/${id}/rate-multipliers`)
   return data
 }
@@ -237,8 +237,8 @@ export async function clearGroupRateMultipliers(id: number): Promise<{ message: 
  * Only touches rate_multiplier column; preserves rpm_override on existing rows.
  */
 export async function batchSetGroupRateMultipliers(
-  id: number,
-  entries: Array<{ user_id: number; rate_multiplier: number }>
+  id: string | number,
+  entries: Array<{ user_id: string | number; rate_multiplier: number }>
 ): Promise<{ message: string }> {
   const { data } = await apiClient.put<{ message: string }>(
     `/admin/groups/${id}/rate-multipliers`,
@@ -251,7 +251,7 @@ export async function batchSetGroupRateMultipliers(
  * RPM override entry for a user in a group
  */
 export interface GroupRPMOverrideEntry {
-  user_id: number
+  user_id: string | number
   user_name: string
   user_email: string
   user_notes: string
@@ -262,7 +262,7 @@ export interface GroupRPMOverrideEntry {
 /**
  * Get RPM overrides for users in a group (subset of rate-multipliers endpoint).
  */
-export async function getGroupRPMOverrides(id: number): Promise<GroupRPMOverrideEntry[]> {
+export async function getGroupRPMOverrides(id: string | number): Promise<GroupRPMOverrideEntry[]> {
   const { data } = await apiClient.get<GroupRateMultiplierEntry[]>(
     `/admin/groups/${id}/rate-multipliers`
   )
@@ -283,8 +283,8 @@ export async function getGroupRPMOverrides(id: number): Promise<GroupRPMOverride
  * Only touches rpm_override column; preserves rate_multiplier on existing rows.
  */
 export async function batchSetGroupRPMOverrides(
-  id: number,
-  entries: Array<{ user_id: number; rpm_override: number }>
+  id: string | number,
+  entries: Array<{ user_id: string | number; rpm_override: number }>
 ): Promise<{ message: string }> {
   const { data } = await apiClient.put<{ message: string }>(
     `/admin/groups/${id}/rpm-overrides`,
@@ -296,7 +296,7 @@ export async function batchSetGroupRPMOverrides(
 /**
  * Clear all RPM overrides for a group (preserves rate_multiplier).
  */
-export async function clearGroupRPMOverrides(id: number): Promise<{ message: string }> {
+export async function clearGroupRPMOverrides(id: string | number): Promise<{ message: string }> {
   const { data } = await apiClient.delete<{ message: string }>(`/admin/groups/${id}/rpm-overrides`)
   return data
 }
@@ -308,9 +308,9 @@ export async function clearGroupRPMOverrides(id: number): Promise<{ message: str
  */
 export async function getUsageSummary(
   timezone?: string
-): Promise<{ group_id: number; today_cost: number; total_cost: number }[]> {
+): Promise<{ group_id: string | number; today_cost: number; total_cost: number }[]> {
   const { data } = await apiClient.get<
-    { group_id: number; today_cost: number; total_cost: number }[]
+    { group_id: string | number; today_cost: number; total_cost: number }[]
   >('/admin/groups/usage-summary', {
     params: timezone ? { timezone } : undefined
   })
@@ -321,10 +321,10 @@ export async function getUsageSummary(
  * Get capacity summary (concurrency/sessions/RPM) for all active groups
  */
 export async function getCapacitySummary(): Promise<
-  { group_id: number; concurrency_used: number; concurrency_max: number; sessions_used: number; sessions_max: number; rpm_used: number; rpm_max: number }[]
+  { group_id: string | number; concurrency_used: number; concurrency_max: number; sessions_used: number; sessions_max: number; rpm_used: number; rpm_max: number }[]
 > {
   const { data } = await apiClient.get<
-    { group_id: number; concurrency_used: number; concurrency_max: number; sessions_used: number; sessions_max: number; rpm_used: number; rpm_max: number }[]
+    { group_id: string | number; concurrency_used: number; concurrency_max: number; sessions_used: number; sessions_max: number; rpm_used: number; rpm_max: number }[]
   >('/admin/groups/capacity-summary')
   return data
 }

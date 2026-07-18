@@ -472,7 +472,7 @@ func (h *DashboardHandler) GetUserUsageTrend(c *gin.Context) {
 
 // BatchUsersUsageRequest represents the request body for batch user usage stats
 type BatchUsersUsageRequest struct {
-	UserIDs []int64 `json:"user_ids" binding:"required"`
+	UserIDs jsonInt64Slice `json:"user_ids" binding:"required"`
 }
 
 var dashboardUsersRankingCache = newSnapshotCache(5 * time.Minute)
@@ -540,7 +540,7 @@ func (h *DashboardHandler) GetBatchUsersUsage(c *gin.Context) {
 		return
 	}
 
-	userIDs := normalizeInt64IDList(req.UserIDs)
+	userIDs := normalizeInt64IDList(req.UserIDs.Int64s())
 	if len(userIDs) == 0 {
 		response.Success(c, gin.H{"stats": map[string]any{}})
 		return
@@ -577,7 +577,7 @@ func (h *DashboardHandler) GetBatchUsersUsage(c *gin.Context) {
 
 // BatchAPIKeysUsageRequest represents the request body for batch api key usage stats
 type BatchAPIKeysUsageRequest struct {
-	APIKeyIDs []int64 `json:"api_key_ids" binding:"required"`
+	APIKeyIDs jsonInt64Slice `json:"api_key_ids" binding:"required"`
 }
 
 // GetBatchAPIKeysUsage handles getting usage stats for multiple API keys
@@ -589,7 +589,7 @@ func (h *DashboardHandler) GetBatchAPIKeysUsage(c *gin.Context) {
 		return
 	}
 
-	apiKeyIDs := normalizeInt64IDList(req.APIKeyIDs)
+	apiKeyIDs := normalizeInt64IDList(req.APIKeyIDs.Int64s())
 	if len(apiKeyIDs) == 0 {
 		response.Success(c, gin.H{"stats": map[string]any{}})
 		return

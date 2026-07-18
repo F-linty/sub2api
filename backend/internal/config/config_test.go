@@ -14,6 +14,10 @@ import (
 func resetViperWithJWTSecret(t *testing.T) {
 	t.Helper()
 	viper.Reset()
+	configDir := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(configDir, "config.yaml"), []byte("{}\n"), 0o600))
+	t.Setenv("DATA_DIR", configDir)
+	t.Setenv("SUB2API_SKIP_DEFAULT_CONFIG_PATHS", "true")
 	t.Setenv("JWT_SECRET", strings.Repeat("x", 32))
 }
 
@@ -36,6 +40,10 @@ func TestLoadServerTimingConfig(t *testing.T) {
 
 func TestLoadForBootstrapAllowsMissingJWTSecret(t *testing.T) {
 	viper.Reset()
+	configDir := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(configDir, "config.yaml"), []byte("{}\n"), 0o600))
+	t.Setenv("DATA_DIR", configDir)
+	t.Setenv("SUB2API_SKIP_DEFAULT_CONFIG_PATHS", "true")
 	t.Setenv("JWT_SECRET", "")
 
 	cfg, err := LoadForBootstrap()

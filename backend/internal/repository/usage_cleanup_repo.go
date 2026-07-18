@@ -120,6 +120,7 @@ func (r *usageCleanupRepository) ClaimNextPendingTask(ctx context.Context, stale
 	if staleRunningAfterSeconds <= 0 {
 		staleRunningAfterSeconds = 1800
 	}
+	staleRunningBefore := time.Now().UTC().Add(-time.Duration(staleRunningAfterSeconds) * time.Second)
 	query := `
 		WITH next AS (
 			SELECT id
@@ -128,7 +129,7 @@ func (r *usageCleanupRepository) ClaimNextPendingTask(ctx context.Context, stale
 				OR (
 					status = $2
 					AND started_at IS NOT NULL
-					AND started_at < NOW() - ($3 * interval '1 second')
+					AND started_at < $3
 				)
 			ORDER BY created_at ASC
 			LIMIT 1
@@ -157,7 +158,7 @@ func (r *usageCleanupRepository) ClaimNextPendingTask(ctx context.Context, stale
 		[]any{
 			service.UsageCleanupStatusPending,
 			service.UsageCleanupStatusRunning,
-			staleRunningAfterSeconds,
+			staleRunningBefore,
 			service.UsageCleanupStatusRunning,
 		},
 		&task.ID,

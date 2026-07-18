@@ -104,12 +104,12 @@ type CreateAccountRequest struct {
 	Type                    string         `json:"type" binding:"required,oneof=oauth setup-token apikey upstream bedrock service_account"`
 	Credentials             map[string]any `json:"credentials" binding:"required"`
 	Extra                   map[string]any `json:"extra"`
-	ProxyID                 *int64         `json:"proxy_id"`
+	ProxyID                 *jsonInt64     `json:"proxy_id"`
 	Concurrency             int            `json:"concurrency"`
 	Priority                int            `json:"priority"`
 	RateMultiplier          *float64       `json:"rate_multiplier"`
 	LoadFactor              *int           `json:"load_factor"`
-	GroupIDs                []int64        `json:"group_ids"`
+	GroupIDs                jsonInt64Slice `json:"group_ids"`
 	ExpiresAt               *int64         `json:"expires_at"`
 	AutoPauseOnExpired      *bool          `json:"auto_pause_on_expired"`
 	ConfirmMixedChannelRisk *bool          `json:"confirm_mixed_channel_risk"` // 用户确认混合渠道风险
@@ -118,36 +118,36 @@ type CreateAccountRequest struct {
 // UpdateAccountRequest represents update account request
 // 使用指针类型来区分"未提供"和"设置为0"
 type UpdateAccountRequest struct {
-	Name                    string         `json:"name"`
-	Notes                   *string        `json:"notes"`
-	Type                    string         `json:"type" binding:"omitempty,oneof=oauth setup-token apikey upstream bedrock service_account"`
-	Credentials             map[string]any `json:"credentials"`
-	Extra                   map[string]any `json:"extra"`
-	ProxyID                 *int64         `json:"proxy_id"`
-	Concurrency             *int           `json:"concurrency"`
-	Priority                *int           `json:"priority"`
-	RateMultiplier          *float64       `json:"rate_multiplier"`
-	LoadFactor              *int           `json:"load_factor"`
-	Status                  string         `json:"status" binding:"omitempty,oneof=active inactive error"`
-	GroupIDs                *[]int64       `json:"group_ids"`
-	ExpiresAt               *int64         `json:"expires_at"`
-	AutoPauseOnExpired      *bool          `json:"auto_pause_on_expired"`
-	ConfirmMixedChannelRisk *bool          `json:"confirm_mixed_channel_risk"` // 用户确认混合渠道风险
+	Name                    string          `json:"name"`
+	Notes                   *string         `json:"notes"`
+	Type                    string          `json:"type" binding:"omitempty,oneof=oauth setup-token apikey upstream bedrock service_account"`
+	Credentials             map[string]any  `json:"credentials"`
+	Extra                   map[string]any  `json:"extra"`
+	ProxyID                 *jsonInt64      `json:"proxy_id"`
+	Concurrency             *int            `json:"concurrency"`
+	Priority                *int            `json:"priority"`
+	RateMultiplier          *float64        `json:"rate_multiplier"`
+	LoadFactor              *int            `json:"load_factor"`
+	Status                  string          `json:"status" binding:"omitempty,oneof=active inactive error"`
+	GroupIDs                *jsonInt64Slice `json:"group_ids"`
+	ExpiresAt               *int64          `json:"expires_at"`
+	AutoPauseOnExpired      *bool           `json:"auto_pause_on_expired"`
+	ConfirmMixedChannelRisk *bool           `json:"confirm_mixed_channel_risk"` // 用户确认混合渠道风险
 }
 
 // BulkUpdateAccountsRequest represents the payload for bulk editing accounts
 type BulkUpdateAccountsRequest struct {
-	AccountIDs              []int64                   `json:"account_ids"`
+	AccountIDs              []flexibleAccountID       `json:"account_ids"`
 	Filters                 *BulkUpdateAccountFilters `json:"filters"`
 	Name                    string                    `json:"name"`
-	ProxyID                 *int64                    `json:"proxy_id"`
+	ProxyID                 *jsonInt64                `json:"proxy_id"`
 	Concurrency             *int                      `json:"concurrency"`
 	Priority                *int                      `json:"priority"`
 	RateMultiplier          *float64                  `json:"rate_multiplier"`
 	LoadFactor              *int                      `json:"load_factor"`
 	Status                  string                    `json:"status" binding:"omitempty,oneof=active inactive error"`
 	Schedulable             *bool                     `json:"schedulable"`
-	GroupIDs                *[]int64                  `json:"group_ids"`
+	GroupIDs                *jsonInt64Slice           `json:"group_ids"`
 	Credentials             map[string]any            `json:"credentials"`
 	Extra                   map[string]any            `json:"extra"`
 	ConfirmMixedChannelRisk *bool                     `json:"confirm_mixed_channel_risk"` // 用户确认混合渠道风险
@@ -162,11 +162,76 @@ type BulkUpdateAccountFilters struct {
 	PrivacyMode string `json:"privacy_mode"`
 }
 
+type flexibleAccountID int64
+
+func (id *flexibleAccountID) UnmarshalJSON(data []byte) error {
+	var s string
+	if err := json.Unmarshal(data, &s); err == nil {
+		parsed, parseErr := strconv.ParseInt(strings.TrimSpace(s), 10, 64)
+		if parseErr != nil {
+			return parseErr
+		}
+		*id = flexibleAccountID(parsed)
+		return nil
+	}
+
+	var n int64
+	if err := json.Unmarshal(data, &n); err != nil {
+		return err
+	}
+	*id = flexibleAccountID(n)
+	return nil
+}
+
+func flexibleAccountIDsToInt64(ids []flexibleAccountID) []int64 {
+	out := make([]int64, 0, len(ids))
+	for _, id := range ids {
+		out = append(out, int64(id))
+	}
+	return out
+}
+
+func formatAccountID(id int64) string {
+	return strconv.FormatInt(id, 10)
+}
+
+func formatAccountIDList(ids []int64) []string {
+	out := make([]string, 0, len(ids))
+	for _, id := range ids {
+		out = append(out, formatAccountID(id))
+	}
+	return out
+}
+
+func bulkUpdateAccountsResultResponse(result *service.BulkUpdateAccountsResult) gin.H {
+	if result == nil {
+		return gin.H{}
+	}
+	items := make([]gin.H, 0, len(result.Results))
+	for _, item := range result.Results {
+		out := gin.H{
+			"account_id": formatAccountID(item.AccountID),
+			"success":    item.Success,
+		}
+		if item.Error != "" {
+			out["error"] = item.Error
+		}
+		items = append(items, out)
+	}
+	return gin.H{
+		"success":     result.Success,
+		"failed":      result.Failed,
+		"success_ids": formatAccountIDList(result.SuccessIDs),
+		"failed_ids":  formatAccountIDList(result.FailedIDs),
+		"results":     items,
+	}
+}
+
 // CheckMixedChannelRequest represents check mixed channel risk request
 type CheckMixedChannelRequest struct {
-	Platform  string  `json:"platform" binding:"required"`
-	GroupIDs  []int64 `json:"group_ids"`
-	AccountID *int64  `json:"account_id"`
+	Platform  string             `json:"platform" binding:"required"`
+	GroupIDs  jsonInt64Slice     `json:"group_ids"`
+	AccountID *flexibleAccountID `json:"account_id"`
 }
 
 // AccountWithConcurrency extends Account with real-time concurrency info
@@ -749,10 +814,10 @@ func (h *AccountHandler) CheckMixedChannel(c *gin.Context) {
 
 	accountID := int64(0)
 	if req.AccountID != nil {
-		accountID = *req.AccountID
+		accountID = int64(*req.AccountID)
 	}
 
-	err := h.adminService.CheckMixedChannelRisk(c.Request.Context(), accountID, req.Platform, req.GroupIDs)
+	err := h.adminService.CheckMixedChannelRisk(c.Request.Context(), accountID, req.Platform, req.GroupIDs.Int64s())
 	if err != nil {
 		var mixedErr *service.MixedChannelError
 		if errors.As(err, &mixedErr) {
@@ -811,12 +876,12 @@ func (h *AccountHandler) Create(c *gin.Context) {
 			Type:                  req.Type,
 			Credentials:           req.Credentials,
 			Extra:                 req.Extra,
-			ProxyID:               req.ProxyID,
+			ProxyID:               jsonInt64Ptr(req.ProxyID),
 			Concurrency:           req.Concurrency,
 			Priority:              req.Priority,
 			RateMultiplier:        req.RateMultiplier,
 			LoadFactor:            req.LoadFactor,
-			GroupIDs:              req.GroupIDs,
+			GroupIDs:              req.GroupIDs.Int64s(),
 			ExpiresAt:             req.ExpiresAt,
 			AutoPauseOnExpired:    req.AutoPauseOnExpired,
 			SkipMixedChannelCheck: skipCheck,
@@ -890,13 +955,13 @@ func (h *AccountHandler) Update(c *gin.Context) {
 		Type:                  req.Type,
 		Credentials:           req.Credentials,
 		Extra:                 req.Extra,
-		ProxyID:               req.ProxyID,
+		ProxyID:               jsonInt64Ptr(req.ProxyID),
 		Concurrency:           req.Concurrency, // 指针类型，nil 表示未提供
 		Priority:              req.Priority,    // 指针类型，nil 表示未提供
 		RateMultiplier:        req.RateMultiplier,
 		LoadFactor:            req.LoadFactor,
 		Status:                req.Status,
-		GroupIDs:              req.GroupIDs,
+		GroupIDs:              jsonInt64SlicePtr(req.GroupIDs),
 		ExpiresAt:             req.ExpiresAt,
 		AutoPauseOnExpired:    req.AutoPauseOnExpired,
 		SkipMixedChannelCheck: skipCheck,
@@ -1434,13 +1499,14 @@ func (h *AccountHandler) RevertProxyFallback(c *gin.Context) {
 // POST /api/v1/admin/accounts/batch-clear-error
 func (h *AccountHandler) BatchClearError(c *gin.Context) {
 	var req struct {
-		AccountIDs []int64 `json:"account_ids"`
+		AccountIDs []flexibleAccountID `json:"account_ids"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		response.BadRequest(c, "Invalid request: "+err.Error())
 		return
 	}
-	if len(req.AccountIDs) == 0 {
+	accountIDs := flexibleAccountIDsToInt64(req.AccountIDs)
+	if len(accountIDs) == 0 {
 		response.BadRequest(c, "account_ids is required")
 		return
 	}
@@ -1456,7 +1522,7 @@ func (h *AccountHandler) BatchClearError(c *gin.Context) {
 	var errors []gin.H
 
 	// 注意：所有 goroutine 必须 return nil，避免 errgroup cancel 其他并发任务
-	for _, id := range req.AccountIDs {
+	for _, id := range accountIDs {
 		accountID := id // 闭包捕获
 		g.Go(func() error {
 			account, err := h.adminService.ClearAccountError(gctx, accountID)
@@ -1464,7 +1530,7 @@ func (h *AccountHandler) BatchClearError(c *gin.Context) {
 				mu.Lock()
 				failedCount++
 				errors = append(errors, gin.H{
-					"account_id": accountID,
+					"account_id": formatAccountID(accountID),
 					"error":      err.Error(),
 				})
 				mu.Unlock()
@@ -1491,7 +1557,7 @@ func (h *AccountHandler) BatchClearError(c *gin.Context) {
 	}
 
 	response.Success(c, gin.H{
-		"total":   len(req.AccountIDs),
+		"total":   len(accountIDs),
 		"success": successCount,
 		"failed":  failedCount,
 		"errors":  errors,
@@ -1502,20 +1568,21 @@ func (h *AccountHandler) BatchClearError(c *gin.Context) {
 // POST /api/v1/admin/accounts/batch-refresh
 func (h *AccountHandler) BatchRefresh(c *gin.Context) {
 	var req struct {
-		AccountIDs []int64 `json:"account_ids"`
+		AccountIDs []flexibleAccountID `json:"account_ids"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		response.BadRequest(c, "Invalid request: "+err.Error())
 		return
 	}
-	if len(req.AccountIDs) == 0 {
+	accountIDs := flexibleAccountIDsToInt64(req.AccountIDs)
+	if len(accountIDs) == 0 {
 		response.BadRequest(c, "account_ids is required")
 		return
 	}
 
 	ctx := c.Request.Context()
 
-	accounts, err := h.adminService.GetAccountsByIDs(ctx, req.AccountIDs)
+	accounts, err := h.adminService.GetAccountsByIDs(ctx, accountIDs)
 	if err != nil {
 		response.ErrorFrom(c, err)
 		return
@@ -1539,11 +1606,11 @@ func (h *AccountHandler) BatchRefresh(c *gin.Context) {
 	var warnings []gin.H
 
 	// 将不存在的账号 ID 标记为失败
-	for _, id := range req.AccountIDs {
+	for _, id := range accountIDs {
 		if !foundIDs[id] {
 			failedCount++
 			errors = append(errors, gin.H{
-				"account_id": id,
+				"account_id": formatAccountID(id),
 				"error":      "account not found",
 			})
 		}
@@ -1561,14 +1628,14 @@ func (h *AccountHandler) BatchRefresh(c *gin.Context) {
 			if err != nil {
 				failedCount++
 				errors = append(errors, gin.H{
-					"account_id": acc.ID,
+					"account_id": formatAccountID(acc.ID),
 					"error":      err.Error(),
 				})
 			} else {
 				successCount++
 				if warning != "" {
 					warnings = append(warnings, gin.H{
-						"account_id": acc.ID,
+						"account_id": formatAccountID(acc.ID),
 						"warning":    warning,
 					})
 				}
@@ -1584,7 +1651,7 @@ func (h *AccountHandler) BatchRefresh(c *gin.Context) {
 	}
 
 	response.Success(c, gin.H{
-		"total":    len(req.AccountIDs),
+		"total":    len(accountIDs),
 		"success":  successCount,
 		"failed":   failedCount,
 		"errors":   errors,
@@ -1640,11 +1707,11 @@ func (h *AccountHandler) BatchCreate(c *gin.Context) {
 				Type:                  item.Type,
 				Credentials:           item.Credentials,
 				Extra:                 item.Extra,
-				ProxyID:               item.ProxyID,
+				ProxyID:               jsonInt64Ptr(item.ProxyID),
 				Concurrency:           item.Concurrency,
 				Priority:              item.Priority,
 				RateMultiplier:        item.RateMultiplier,
-				GroupIDs:              item.GroupIDs,
+				GroupIDs:              item.GroupIDs.Int64s(),
 				ExpiresAt:             item.ExpiresAt,
 				AutoPauseOnExpired:    item.AutoPauseOnExpired,
 				SkipMixedChannelCheck: skipCheck,
@@ -1673,7 +1740,7 @@ func (h *AccountHandler) BatchCreate(c *gin.Context) {
 			success++
 			results = append(results, gin.H{
 				"name":    item.Name,
-				"id":      account.ID,
+				"id":      formatAccountID(account.ID),
 				"success": true,
 			})
 		}
@@ -1719,9 +1786,9 @@ func (h *AccountHandler) BatchCreate(c *gin.Context) {
 
 // BatchUpdateCredentialsRequest represents batch credentials update request
 type BatchUpdateCredentialsRequest struct {
-	AccountIDs []int64 `json:"account_ids" binding:"required,min=1"`
-	Field      string  `json:"field" binding:"required,oneof=account_uuid org_uuid intercept_warmup_requests"`
-	Value      any     `json:"value"`
+	AccountIDs []flexibleAccountID `json:"account_ids" binding:"required,min=1"`
+	Field      string              `json:"field" binding:"required,oneof=account_uuid org_uuid intercept_warmup_requests"`
+	Value      any                 `json:"value"`
 }
 
 // BatchUpdateCredentials handles batch updating credentials fields
@@ -1751,14 +1818,15 @@ func (h *AccountHandler) BatchUpdateCredentials(c *gin.Context) {
 	}
 
 	ctx := c.Request.Context()
+	accountIDs := flexibleAccountIDsToInt64(req.AccountIDs)
 
 	// 阶段一：预验证所有账号存在，收集 credentials
 	type accountUpdate struct {
 		ID          int64
 		Credentials map[string]any
 	}
-	updates := make([]accountUpdate, 0, len(req.AccountIDs))
-	for _, accountID := range req.AccountIDs {
+	updates := make([]accountUpdate, 0, len(accountIDs))
+	for _, accountID := range accountIDs {
 		account, err := h.adminService.GetAccount(ctx, accountID)
 		if err != nil {
 			response.Error(c, 404, fmt.Sprintf("Account %d not found", accountID))
@@ -1783,7 +1851,7 @@ func (h *AccountHandler) BatchUpdateCredentials(c *gin.Context) {
 			failed++
 			failedIDs = append(failedIDs, u.ID)
 			results = append(results, gin.H{
-				"account_id": u.ID,
+				"account_id": formatAccountID(u.ID),
 				"success":    false,
 				"error":      err.Error(),
 			})
@@ -1792,7 +1860,7 @@ func (h *AccountHandler) BatchUpdateCredentials(c *gin.Context) {
 		success++
 		successIDs = append(successIDs, u.ID)
 		results = append(results, gin.H{
-			"account_id": u.ID,
+			"account_id": formatAccountID(u.ID),
 			"success":    true,
 		})
 	}
@@ -1800,8 +1868,8 @@ func (h *AccountHandler) BatchUpdateCredentials(c *gin.Context) {
 	response.Success(c, gin.H{
 		"success":     success,
 		"failed":      failed,
-		"success_ids": successIDs,
-		"failed_ids":  failedIDs,
+		"success_ids": formatAccountIDList(successIDs),
+		"failed_ids":  formatAccountIDList(failedIDs),
 		"results":     results,
 	})
 }
@@ -1818,7 +1886,8 @@ func (h *AccountHandler) BulkUpdate(c *gin.Context) {
 		response.BadRequest(c, "rate_multiplier must be >= 0")
 		return
 	}
-	if len(req.AccountIDs) == 0 && req.Filters == nil {
+	accountIDs := flexibleAccountIDsToInt64(req.AccountIDs)
+	if len(accountIDs) == 0 && req.Filters == nil {
 		response.BadRequest(c, "account_ids or filters is required")
 		return
 	}
@@ -1846,17 +1915,17 @@ func (h *AccountHandler) BulkUpdate(c *gin.Context) {
 	}
 
 	result, err := h.adminService.BulkUpdateAccounts(c.Request.Context(), &service.BulkUpdateAccountsInput{
-		AccountIDs:            req.AccountIDs,
+		AccountIDs:            accountIDs,
 		Filters:               toServiceBulkUpdateAccountFilters(req.Filters),
 		Name:                  req.Name,
-		ProxyID:               req.ProxyID,
+		ProxyID:               jsonInt64Ptr(req.ProxyID),
 		Concurrency:           req.Concurrency,
 		Priority:              req.Priority,
 		RateMultiplier:        req.RateMultiplier,
 		LoadFactor:            req.LoadFactor,
 		Status:                req.Status,
 		Schedulable:           req.Schedulable,
-		GroupIDs:              req.GroupIDs,
+		GroupIDs:              jsonInt64SlicePtr(req.GroupIDs),
 		Credentials:           req.Credentials,
 		Extra:                 req.Extra,
 		SkipMixedChannelCheck: skipCheck,
@@ -1880,7 +1949,7 @@ func (h *AccountHandler) BulkUpdate(c *gin.Context) {
 		return
 	}
 
-	response.Success(c, result)
+	response.Success(c, bulkUpdateAccountsResultResponse(result))
 }
 
 func toServiceBulkUpdateAccountFilters(filters *BulkUpdateAccountFilters) *service.BulkUpdateAccountFilters {
@@ -1901,7 +1970,7 @@ func toServiceBulkUpdateAccountFilters(filters *BulkUpdateAccountFilters) *servi
 
 // GenerateAuthURLRequest represents the request for generating auth URL
 type GenerateAuthURLRequest struct {
-	ProxyID *int64 `json:"proxy_id"`
+	ProxyID *jsonInt64 `json:"proxy_id"`
 }
 
 // GenerateAuthURL generates OAuth authorization URL with full scope
@@ -1913,7 +1982,7 @@ func (h *OAuthHandler) GenerateAuthURL(c *gin.Context) {
 		req = GenerateAuthURLRequest{}
 	}
 
-	result, err := h.oauthService.GenerateAuthURL(c.Request.Context(), req.ProxyID)
+	result, err := h.oauthService.GenerateAuthURL(c.Request.Context(), jsonInt64Ptr(req.ProxyID))
 	if err != nil {
 		response.ErrorFrom(c, err)
 		return
@@ -1931,7 +2000,7 @@ func (h *OAuthHandler) GenerateSetupTokenURL(c *gin.Context) {
 		req = GenerateAuthURLRequest{}
 	}
 
-	result, err := h.oauthService.GenerateSetupTokenURL(c.Request.Context(), req.ProxyID)
+	result, err := h.oauthService.GenerateSetupTokenURL(c.Request.Context(), jsonInt64Ptr(req.ProxyID))
 	if err != nil {
 		response.ErrorFrom(c, err)
 		return
@@ -1942,9 +2011,9 @@ func (h *OAuthHandler) GenerateSetupTokenURL(c *gin.Context) {
 
 // ExchangeCodeRequest represents the request for exchanging auth code
 type ExchangeCodeRequest struct {
-	SessionID string `json:"session_id" binding:"required"`
-	Code      string `json:"code" binding:"required"`
-	ProxyID   *int64 `json:"proxy_id"`
+	SessionID string     `json:"session_id" binding:"required"`
+	Code      string     `json:"code" binding:"required"`
+	ProxyID   *jsonInt64 `json:"proxy_id"`
 }
 
 // ExchangeCode exchanges authorization code for tokens
@@ -1959,7 +2028,7 @@ func (h *OAuthHandler) ExchangeCode(c *gin.Context) {
 	tokenInfo, err := h.oauthService.ExchangeCode(c.Request.Context(), &service.ExchangeCodeInput{
 		SessionID: req.SessionID,
 		Code:      req.Code,
-		ProxyID:   req.ProxyID,
+		ProxyID:   jsonInt64Ptr(req.ProxyID),
 	})
 	if err != nil {
 		response.ErrorFrom(c, err)
@@ -1981,7 +2050,7 @@ func (h *OAuthHandler) ExchangeSetupTokenCode(c *gin.Context) {
 	tokenInfo, err := h.oauthService.ExchangeCode(c.Request.Context(), &service.ExchangeCodeInput{
 		SessionID: req.SessionID,
 		Code:      req.Code,
-		ProxyID:   req.ProxyID,
+		ProxyID:   jsonInt64Ptr(req.ProxyID),
 	})
 	if err != nil {
 		response.ErrorFrom(c, err)
@@ -1993,8 +2062,8 @@ func (h *OAuthHandler) ExchangeSetupTokenCode(c *gin.Context) {
 
 // CookieAuthRequest represents the request for cookie-based authentication
 type CookieAuthRequest struct {
-	SessionKey string `json:"code" binding:"required"` // Using 'code' field as sessionKey (frontend sends it this way)
-	ProxyID    *int64 `json:"proxy_id"`
+	SessionKey string     `json:"code" binding:"required"` // Using 'code' field as sessionKey (frontend sends it this way)
+	ProxyID    *jsonInt64 `json:"proxy_id"`
 }
 
 // CookieAuth performs OAuth using sessionKey (cookie-based auto-auth)
@@ -2008,7 +2077,7 @@ func (h *OAuthHandler) CookieAuth(c *gin.Context) {
 
 	tokenInfo, err := h.oauthService.CookieAuth(c.Request.Context(), &service.CookieAuthInput{
 		SessionKey: req.SessionKey,
-		ProxyID:    req.ProxyID,
+		ProxyID:    jsonInt64Ptr(req.ProxyID),
 		Scope:      "full",
 	})
 	if err != nil {
@@ -2030,7 +2099,7 @@ func (h *OAuthHandler) SetupTokenCookieAuth(c *gin.Context) {
 
 	tokenInfo, err := h.oauthService.CookieAuth(c.Request.Context(), &service.CookieAuthInput{
 		SessionKey: req.SessionKey,
-		ProxyID:    req.ProxyID,
+		ProxyID:    jsonInt64Ptr(req.ProxyID),
 		Scope:      "inference",
 	})
 	if err != nil {
@@ -2177,7 +2246,7 @@ func (h *AccountHandler) GetTodayStats(c *gin.Context) {
 
 // BatchTodayStatsRequest 批量今日统计请求体。
 type BatchTodayStatsRequest struct {
-	AccountIDs []int64 `json:"account_ids" binding:"required"`
+	AccountIDs []flexibleAccountID `json:"account_ids" binding:"required"`
 }
 
 // GetBatchTodayStats 批量获取多个账号的今日统计。
@@ -2189,7 +2258,7 @@ func (h *AccountHandler) GetBatchTodayStats(c *gin.Context) {
 		return
 	}
 
-	accountIDs := normalizeInt64IDList(req.AccountIDs)
+	accountIDs := normalizeInt64IDList(flexibleAccountIDsToInt64(req.AccountIDs))
 	if len(accountIDs) == 0 {
 		response.Success(c, gin.H{"stats": map[string]any{}})
 		return
@@ -2634,7 +2703,7 @@ func (h *AccountHandler) RefreshTier(c *gin.Context) {
 
 // BatchRefreshTierRequest represents batch tier refresh request
 type BatchRefreshTierRequest struct {
-	AccountIDs []int64 `json:"account_ids"`
+	AccountIDs []flexibleAccountID `json:"account_ids"`
 }
 
 // BatchRefreshTier handles batch refreshing Google One tier
@@ -2648,7 +2717,8 @@ func (h *AccountHandler) BatchRefreshTier(c *gin.Context) {
 	ctx := c.Request.Context()
 	accounts := make([]*service.Account, 0)
 
-	if len(req.AccountIDs) == 0 {
+	accountIDs := flexibleAccountIDsToInt64(req.AccountIDs)
+	if len(accountIDs) == 0 {
 		allAccounts, _, err := h.adminService.ListAccounts(ctx, 1, 10000, "gemini", "oauth", "", "", 0, "", "name", "asc")
 		if err != nil {
 			response.ErrorFrom(c, err)
@@ -2662,7 +2732,7 @@ func (h *AccountHandler) BatchRefreshTier(c *gin.Context) {
 			}
 		}
 	} else {
-		fetched, err := h.adminService.GetAccountsByIDs(ctx, req.AccountIDs)
+		fetched, err := h.adminService.GetAccountsByIDs(ctx, accountIDs)
 		if err != nil {
 			response.ErrorFrom(c, err)
 			return
@@ -2699,7 +2769,7 @@ func (h *AccountHandler) BatchRefreshTier(c *gin.Context) {
 				mu.Lock()
 				failedCount++
 				errors = append(errors, gin.H{
-					"account_id": acc.ID,
+					"account_id": formatAccountID(acc.ID),
 					"error":      err.Error(),
 				})
 				mu.Unlock()
@@ -2715,7 +2785,7 @@ func (h *AccountHandler) BatchRefreshTier(c *gin.Context) {
 			if updateErr != nil {
 				failedCount++
 				errors = append(errors, gin.H{
-					"account_id": acc.ID,
+					"account_id": formatAccountID(acc.ID),
 					"error":      updateErr.Error(),
 				})
 			} else {

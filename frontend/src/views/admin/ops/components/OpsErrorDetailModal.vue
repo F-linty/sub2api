@@ -224,7 +224,7 @@ import { resolvePrimaryResponseBody, resolveUpstreamPayload } from '../utils/err
 
 interface Props {
   show: boolean
-  errorId: number | null
+  errorId: string | number | null
   errorType?: 'request' | 'upstream'
 }
 
@@ -296,7 +296,7 @@ const correlatedUpstreamLoading = ref(false)
 
 const correlatedUpstreamErrors = computed<OpsErrorDetail[]>(() => correlatedUpstream.value)
 
-const expandedUpstreamDetailIds = ref(new Set<number>())
+const expandedUpstreamDetailIds = ref(new Set<string | number>())
 
 function getUpstreamResponsePreview(ev: OpsErrorDetail): string {
   const upstreamPayload = resolveUpstreamPayload(ev)
@@ -304,7 +304,7 @@ function getUpstreamResponsePreview(ev: OpsErrorDetail): string {
   return String(ev.error_body || '').trim()
 }
 
-function toggleUpstreamDetail(id: number) {
+function toggleUpstreamDetail(id: string | number) {
   const next = new Set(expandedUpstreamDetailIds.value)
   if (next.has(id)) next.delete(id)
   else next.add(id)
@@ -341,7 +341,7 @@ function prettyJSON(raw?: string): string {
   }
 }
 
-async function fetchDetail(id: number) {
+async function fetchDetail(id: string | number) {
   loading.value = true
   try {
     const kind = props.errorType || (detail.value?.phase === 'upstream' ? 'upstream' : 'request')

@@ -31,7 +31,7 @@ export async function list(
   return data
 }
 
-export async function getById(id: number): Promise<Announcement> {
+export async function getById(id: string | number): Promise<Announcement> {
   const { data } = await apiClient.get<Announcement>(`/admin/announcements/${id}`)
   return data
 }
@@ -41,18 +41,18 @@ export async function create(request: CreateAnnouncementRequest): Promise<Announ
   return data
 }
 
-export async function update(id: number, request: UpdateAnnouncementRequest): Promise<Announcement> {
+export async function update(id: string | number, request: UpdateAnnouncementRequest): Promise<Announcement> {
   const { data } = await apiClient.put<Announcement>(`/admin/announcements/${id}`, request)
   return data
 }
 
-export async function deleteAnnouncement(id: number): Promise<{ message: string }> {
+export async function deleteAnnouncement(id: string | number): Promise<{ message: string }> {
   const { data } = await apiClient.delete<{ message: string }>(`/admin/announcements/${id}`)
   return data
 }
 
 export async function getReadStatus(
-  id: number,
+  id: string | number,
   page: number = 1,
   pageSize: number = 20,
   filters?: {

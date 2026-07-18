@@ -52,7 +52,7 @@ if (typeof globalThis.requestIdleCallback === 'undefined') {
 }
 
 if (typeof globalThis.cancelIdleCallback === 'undefined') {
-  globalThis.cancelIdleCallback = ((id: number) => {
+  globalThis.cancelIdleCallback = ((id: string | number) => {
     window.clearTimeout(id)
   }) as unknown as typeof cancelIdleCallback
 }

@@ -63,6 +63,23 @@ var validOpsAlertSeveritySet = func() map[string]struct{} {
 	return set
 }()
 
+// opsJSONInt64 accepts both legacy JSON numbers and string-encoded IDs.
+// IDs are strings in API responses so browsers do not lose BIGINT precision.
+type opsJSONInt64 int64
+
+func (v *opsJSONInt64) UnmarshalJSON(raw []byte) error {
+	value := strings.TrimSpace(string(raw))
+	if unquoted, err := strconv.Unquote(value); err == nil {
+		value = unquoted
+	}
+	parsed, err := strconv.ParseInt(value, 10, 64)
+	if err != nil {
+		return fmt.Errorf("invalid int64 value")
+	}
+	*v = opsJSONInt64(parsed)
+	return nil
+}
+
 type opsAlertRuleValidatedInput struct {
 	Name       string
 	MetricType string
@@ -473,12 +490,12 @@ func (h *OpsHandler) CreateAlertSilence(c *gin.Context) {
 	}
 
 	var payload struct {
-		RuleID   int64   `json:"rule_id"`
-		Platform string  `json:"platform"`
-		GroupID  *int64  `json:"group_id"`
-		Region   *string `json:"region"`
-		Until    string  `json:"until"`
-		Reason   string  `json:"reason"`
+		RuleID   opsJSONInt64 `json:"rule_id"`
+		Platform string       `json:"platform"`
+		GroupID  *int64       `json:"group_id"`
+		Region   *string      `json:"region"`
+		Until    string       `json:"until"`
+		Reason   string       `json:"reason"`
 	}
 	if err := c.ShouldBindJSON(&payload); err != nil {
 		response.BadRequest(c, "Invalid request body")
@@ -497,7 +514,7 @@ func (h *OpsHandler) CreateAlertSilence(c *gin.Context) {
 	}
 
 	silence := &service.OpsAlertSilence{
-		RuleID:    payload.RuleID,
+		RuleID:    int64(payload.RuleID),
 		Platform:  strings.TrimSpace(payload.Platform),
 		GroupID:   payload.GroupID,
 		Region:    payload.Region,

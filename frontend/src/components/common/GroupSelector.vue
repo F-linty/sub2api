@@ -66,7 +66,7 @@ import type { AdminGroup, GroupPlatform } from '@/types'
 const { t } = useI18n()
 
 interface Props {
-  modelValue: number[]
+  modelValue: (string | number)[]
   groups: AdminGroup[]
   platform?: GroupPlatform // Optional platform filter
   mixedScheduling?: boolean // For antigravity accounts: allow anthropic/gemini groups
@@ -77,7 +77,7 @@ const props = withDefaults(defineProps<Props>(), {
   searchable: 'auto'
 })
 const emit = defineEmits<{
-  'update:modelValue': [value: number[]]
+  'update:modelValue': [value: (string | number)[]]
 }>()
 
 const searchText = ref('')
@@ -110,7 +110,7 @@ const filteredGroups = computed(() => {
   return result
 })
 
-const handleChange = (groupId: number, checked: boolean) => {
+const handleChange = (groupId: string | number, checked: boolean) => {
   const newValue = checked
     ? [...props.modelValue, groupId]
     : props.modelValue.filter((id) => id !== groupId)

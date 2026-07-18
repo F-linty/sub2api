@@ -519,7 +519,7 @@
             class="input"
             @change="
               (e) => {
-                const val = Number((e.target as HTMLSelectElement).value);
+                const val = (e.target as HTMLSelectElement).value;
                 if (
                   val &&
                   !createForm.copy_accounts_from_group_ids.includes(val)
@@ -2030,7 +2030,7 @@
             class="input"
             @change="
               (e) => {
-                const val = Number((e.target as HTMLSelectElement).value);
+                const val = (e.target as HTMLSelectElement).value;
                 if (
                   val &&
                   !editForm.copy_accounts_from_group_ids.includes(val)
@@ -3560,7 +3560,7 @@ import { useI18n } from "vue-i18n";
 import { useAppStore } from "@/stores/app";
 import { useOnboardingStore } from "@/stores/onboarding";
 import { adminAPI } from "@/api/admin";
-import type { AdminGroup, GroupPlatform, SubscriptionType } from "@/types";
+import type { AdminGroup, EntityID, GroupPlatform, SubscriptionType } from "@/types";
 import type { Column } from "@/components/common/types";
 import AppLayout from "@/components/layout/AppLayout.vue";
 import TablePageLayout from "@/components/layout/TablePageLayout.vue";
@@ -3766,7 +3766,7 @@ const subscriptionTypeOptions = computed(() => [
 
 // 降级分组选项（创建时）- 仅包含 anthropic 平台且未启用 claude_code_only 的分组
 const fallbackGroupOptions = computed(() => {
-  const options: { value: number | null; label: string }[] = [
+  const options: { value: EntityID | null; label: string }[] = [
     { value: null, label: t("admin.groups.claudeCode.noFallback") },
   ];
   const eligibleGroups = groups.value.filter(
@@ -3783,7 +3783,7 @@ const fallbackGroupOptions = computed(() => {
 
 // 降级分组选项（编辑时）- 排除自身
 const fallbackGroupOptionsForEdit = computed(() => {
-  const options: { value: number | null; label: string }[] = [
+  const options: { value: EntityID | null; label: string }[] = [
     { value: null, label: t("admin.groups.claudeCode.noFallback") },
   ];
   const currentId = editingGroup.value?.id;
@@ -3802,7 +3802,7 @@ const fallbackGroupOptionsForEdit = computed(() => {
 
 // 无效请求兜底分组选项（创建时）- 仅包含 anthropic 平台、非订阅且未配置兜底的分组
 const invalidRequestFallbackOptions = computed(() => {
-  const options: { value: number | null; label: string }[] = [
+  const options: { value: EntityID | null; label: string }[] = [
     { value: null, label: t("admin.groups.invalidRequestFallback.noFallback") },
   ];
   const eligibleGroups = groups.value.filter(
@@ -3820,7 +3820,7 @@ const invalidRequestFallbackOptions = computed(() => {
 
 // 无效请求兜底分组选项（编辑时）- 排除自身
 const invalidRequestFallbackOptionsForEdit = computed(() => {
-  const options: { value: number | null; label: string }[] = [
+  const options: { value: EntityID | null; label: string }[] = [
     { value: null, label: t("admin.groups.invalidRequestFallback.noFallback") },
   ];
   const currentId = editingGroup.value?.id;
@@ -3871,11 +3871,11 @@ type GroupUsageSummary = {
   total_cost: number;
 };
 
-const usageMap = ref<Map<number, GroupUsageSummary>>(new Map());
+const usageMap = ref<Map<EntityID, GroupUsageSummary>>(new Map());
 const usageLoading = ref(false);
 const capacityMap = ref<
   Map<
-    number,
+    EntityID,
     {
       concurrencyUsed: number;
       concurrencyMax: number;
@@ -3967,8 +3967,8 @@ const createForm = reactive({
   peak_rate_multiplier: 1.0,
   // Claude Code 客户端限制（仅 anthropic 平台使用）
   claude_code_only: false,
-  fallback_group_id: null as number | null,
-  fallback_group_id_on_invalid_request: null as number | null,
+  fallback_group_id: null as EntityID | null,
+  fallback_group_id_on_invalid_request: null as EntityID | null,
   // OpenAI Messages 调度配置（仅 openai 平台使用）
   allow_messages_dispatch: false,
   opus_mapped_model: createMessagesDispatchDefaults.opus_mapped_model,
@@ -3985,14 +3985,14 @@ const createForm = reactive({
   // MCP XML 协议注入开关（仅 antigravity 平台）
   mcp_xml_inject: true,
   // 从分组复制账号
-  copy_accounts_from_group_ids: [] as number[],
+  copy_accounts_from_group_ids: [] as EntityID[],
   // 分组级 RPM 限制（每用户每分钟最大请求数；0 = 不限制）
   rpm_limit: 0 as number,
 });
 
 // 简单账号类型（用于模型路由选择）
 interface SimpleAccount {
-  id: number;
+  id: string;
   name: string;
 }
 
@@ -4113,7 +4113,7 @@ const selectAccount = (
 // 移除已选账号
 const removeSelectedAccount = (
   rule: ModelRoutingRule,
-  accountId: number,
+  accountId: string,
   _isEdit: boolean = false,
 ) => {
   if (!rule) return;
@@ -4198,7 +4198,7 @@ const resetModelsListState = (
 
 const loadModelsListCandidates = async (
   mode: "create" | "edit",
-  groupID: number,
+  groupID: string | number,
   platform: GroupPlatform,
 ) => {
   const request = { mode, groupID, platform };
@@ -4235,15 +4235,15 @@ const moveEditModelsListItem = (fromIndex: number, toIndex: number) => {
 // 将 UI 格式的路由规则转换为 API 格式
 const convertRoutingRulesToApiFormat = (
   rules: ModelRoutingRule[],
-): Record<string, number[]> | null => {
-  const result: Record<string, number[]> = {};
+): Record<string, string[]> | null => {
+  const result: Record<string, string[]> = {};
   let hasValidRules = false;
 
   for (const rule of rules) {
     const pattern = rule.pattern.trim();
     if (!pattern) continue;
 
-    const accountIds = rule.accounts.map((a) => a.id).filter((id) => id > 0);
+    const accountIds = rule.accounts.map((a) => a.id).filter((id) => id !== "");
 
     if (accountIds.length > 0) {
       result[pattern] = accountIds;
@@ -4256,7 +4256,7 @@ const convertRoutingRulesToApiFormat = (
 
 // 将 API 格式的路由规则转换为 UI 格式（需要加载账号名称）
 const convertApiFormatToRoutingRules = async (
-  apiFormat: Record<string, number[]> | null,
+  apiFormat: Record<string, Array<string | number>> | null,
 ): Promise<ModelRoutingRule[]> => {
   if (!apiFormat) return [];
 
@@ -4270,7 +4270,7 @@ const convertApiFormatToRoutingRules = async (
         accounts.push({ id: account.id, name: account.name });
       } catch {
         // 如果账号不存在，仍然显示 ID
-        accounts.push({ id, name: `#${id}` });
+        accounts.push({ id: String(id), name: `#${id}` });
       }
     }
     rules.push({ pattern, accounts });
@@ -4314,8 +4314,8 @@ const editForm = reactive({
   peak_rate_multiplier: 1.0,
   // Claude Code 客户端限制（仅 anthropic 平台使用）
   claude_code_only: false,
-  fallback_group_id: null as number | null,
-  fallback_group_id_on_invalid_request: null as number | null,
+  fallback_group_id: null as EntityID | null,
+  fallback_group_id_on_invalid_request: null as EntityID | null,
   // OpenAI Messages 调度配置（仅 openai 平台使用）
   allow_messages_dispatch: false,
   default_mapped_model: '',
@@ -4333,7 +4333,7 @@ const editForm = reactive({
   // MCP XML 协议注入开关（仅 antigravity 平台）
   mcp_xml_inject: true,
   // 从分组复制账号
-  copy_accounts_from_group_ids: [] as number[],
+  copy_accounts_from_group_ids: [] as EntityID[],
   // 分组级 RPM 限制（每用户每分钟最大请求数；0 = 不限制）
   rpm_limit: 0 as number,
 });
@@ -4601,7 +4601,7 @@ const loadUsageSummary = async () => {
   try {
     const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
     const data = await adminAPI.groups.getUsageSummary(tz);
-    const map = new Map<number, GroupUsageSummary>();
+    const map = new Map<EntityID, GroupUsageSummary>();
     for (const item of data) {
       map.set(item.group_id, {
         today_cost: item.today_cost,
@@ -4623,7 +4623,7 @@ const loadCapacitySummary = async () => {
   try {
     const data = await adminAPI.groups.getCapacitySummary();
     const map = new Map<
-      number,
+      EntityID,
       {
         concurrencyUsed: number;
         concurrencyMax: number;

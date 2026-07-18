@@ -968,7 +968,7 @@ import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAppStore } from '@/stores/app'
 import { adminAPI } from '@/api/admin'
-import type { Proxy, ProxyAccountSummary, ProxyProtocol, ProxyQualityCheckResult } from '@/types'
+import type { EntityID, Proxy, ProxyAccountSummary, ProxyProtocol, ProxyQualityCheckResult } from '@/types'
 import type { Column } from '@/components/common/types'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import TablePageLayout from '@/components/layout/TablePageLayout.vue'
@@ -1038,8 +1038,8 @@ const editStatusOptions = computed(() => [
 ])
 
 const proxies = ref<Proxy[]>([])
-const visiblePasswordIds = reactive(new Set<number>())
-const copyMenuProxyId = ref<number | null>(null)
+const visiblePasswordIds = reactive(new Set<string | number>())
+const copyMenuProxyId = ref<string | number | null>(null)
 const loading = ref(false)
 const searchQuery = ref('')
 const filters = reactive({
@@ -1069,8 +1069,8 @@ const showExportDataDialog = ref(false)
 const showAccountsModal = ref(false)
 const submitting = ref(false)
 const exportingData = ref(false)
-const testingProxyIds = ref<Set<number>>(new Set())
-const qualityCheckingProxyIds = ref<Set<number>>(new Set())
+const testingProxyIds = ref<Set<string | number>>(new Set())
+const qualityCheckingProxyIds = ref<Set<string | number>>(new Set())
 const batchTesting = ref(false)
 const batchQualityChecking = ref(false)
 const proxyTableRef = ref<HTMLElement | null>(null)
@@ -1085,7 +1085,7 @@ const {
   removeMany: removeSelectedProxies,
   toggleVisible,
   batchUpdate
-} = useTableSelection<Proxy>({
+} = useTableSelection<Proxy, string | number>({
   rows: proxies,
   getId: (proxy) => proxy.id
 })
@@ -1130,7 +1130,7 @@ const createForm = reactive({
   password: '',
   expires_at: '' as string,
   fallback_mode: 'none' as 'none' | 'proxy' | 'direct',
-  backup_proxy_id: null as number | null,
+  backup_proxy_id: null as EntityID | null,
   expiry_warn_days: 7 as number,
 })
 
@@ -1144,7 +1144,7 @@ const editForm = reactive({
   status: 'active' as 'active' | 'inactive' | 'expired',
   expires_at: '' as string,
   fallback_mode: 'none' as 'none' | 'proxy' | 'direct',
-  backup_proxy_id: null as number | null,
+  backup_proxy_id: null as EntityID | null,
   expiry_warn_days: 7 as number,
 })
 
@@ -1152,9 +1152,9 @@ const allProxiesForBackup = ref<Proxy[]>([])
 const loadBackupProxyOptions = async () => {
   allProxiesForBackup.value = await adminAPI.proxies.getAllWithCount()
 }
-const backupProxyOptions = (excludeId?: number) =>
+const backupProxyOptions = (excludeId?: EntityID) =>
   allProxiesForBackup.value
-    .filter(p => p.id !== excludeId)
+    .filter(p => String(p.id) !== String(excludeId ?? ''))
     .map(p => ({ label: `${p.name} (${p.host}:${p.port})`, value: p.id }))
 
 let abortController: AbortController | null = null
@@ -1165,7 +1165,7 @@ const isAbortError = (error: unknown) => {
   return maybeError.name === 'AbortError' || maybeError.code === 'ERR_CANCELED'
 }
 
-const toggleSelectRow = (id: number, event: Event) => {
+const toggleSelectRow = (id: string | number, event: Event) => {
   const target = event.target as HTMLInputElement
   if (target.checked) {
     select(id)
@@ -1475,7 +1475,7 @@ const handleUpdateProxy = async () => {
 }
 
 const applyLatencyResult = (
-  proxyId: number,
+  proxyId: string | number,
   result: {
     success: boolean
     latency_ms?: number
@@ -1516,7 +1516,7 @@ const summarizeQualityStatus = (result: ProxyQualityCheckResult): Proxy['quality
   return 'healthy'
 }
 
-const applyQualityResult = (proxyId: number, result: ProxyQualityCheckResult) => {
+const applyQualityResult = (proxyId: string | number, result: ProxyQualityCheckResult) => {
   const target = proxies.value.find((proxy) => proxy.id === proxyId)
   if (!target) return
   target.quality_status = summarizeQualityStatus(result)
@@ -1534,27 +1534,27 @@ const formatLocation = (proxy: Proxy) => {
 const flagUrl = (code: string) =>
   `https://unpkg.com/flag-icons/flags/4x3/${code.toLowerCase()}.svg`
 
-const startTestingProxy = (proxyId: number) => {
+const startTestingProxy = (proxyId: string | number) => {
   testingProxyIds.value = new Set([...testingProxyIds.value, proxyId])
 }
 
-const stopTestingProxy = (proxyId: number) => {
+const stopTestingProxy = (proxyId: string | number) => {
   const next = new Set(testingProxyIds.value)
   next.delete(proxyId)
   testingProxyIds.value = next
 }
 
-const startQualityCheckingProxy = (proxyId: number) => {
+const startQualityCheckingProxy = (proxyId: string | number) => {
   qualityCheckingProxyIds.value = new Set([...qualityCheckingProxyIds.value, proxyId])
 }
 
-const stopQualityCheckingProxy = (proxyId: number) => {
+const stopQualityCheckingProxy = (proxyId: string | number) => {
   const next = new Set(qualityCheckingProxyIds.value)
   next.delete(proxyId)
   qualityCheckingProxyIds.value = next
 }
 
-const runProxyTest = async (proxyId: number, notify: boolean) => {
+const runProxyTest = async (proxyId: string | number, notify: boolean) => {
   startTestingProxy(proxyId)
   try {
     const result = await adminAPI.proxies.testProxy(proxyId)
@@ -1620,7 +1620,7 @@ const handleQualityCheck = async (proxy: Proxy) => {
   }
 }
 
-const runBatchProxyQualityChecks = async (ids: number[]) => {
+const runBatchProxyQualityChecks = async (ids: (string | number)[]) => {
   if (ids.length === 0) return { total: 0, healthy: 0, warn: 0, challenge: 0, failed: 0 }
 
   const concurrency = 3
@@ -1808,7 +1808,7 @@ const fetchAllProxiesForBatch = async (): Promise<Proxy[]> => {
   return result
 }
 
-const runBatchProxyTests = async (ids: number[]) => {
+const runBatchProxyTests = async (ids: (string | number)[]) => {
   if (ids.length === 0) return
   const concurrency = 5
   let index = 0
@@ -1830,7 +1830,7 @@ const handleBatchTest = async () => {
 
   batchTesting.value = true
   try {
-    let ids: number[] = []
+    let ids: (string | number)[] = []
     if (selectedCount.value > 0) {
       ids = Array.from(selectedProxyIds.value)
     } else {
@@ -1859,7 +1859,7 @@ const handleBatchQualityCheck = async () => {
 
   batchQualityChecking.value = true
   try {
-    let ids: number[] = []
+    let ids: (string | number)[] = []
     if (selectedCount.value > 0) {
       ids = Array.from(selectedProxyIds.value)
     } else {
@@ -2040,7 +2040,7 @@ function copyProxyUrl(row: any) {
   copyMenuProxyId.value = null
 }
 
-function toggleCopyMenu(id: number) {
+function toggleCopyMenu(id: string | number) {
   copyMenuProxyId.value = copyMenuProxyId.value === id ? null : id
 }
 

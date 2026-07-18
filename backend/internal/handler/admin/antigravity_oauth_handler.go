@@ -15,7 +15,7 @@ func NewAntigravityOAuthHandler(antigravityOAuthService *service.AntigravityOAut
 }
 
 type AntigravityGenerateAuthURLRequest struct {
-	ProxyID *int64 `json:"proxy_id"`
+	ProxyID *jsonInt64 `json:"proxy_id"`
 }
 
 // GenerateAuthURL generates Google OAuth authorization URL
@@ -27,7 +27,7 @@ func (h *AntigravityOAuthHandler) GenerateAuthURL(c *gin.Context) {
 		return
 	}
 
-	result, err := h.antigravityOAuthService.GenerateAuthURL(c.Request.Context(), req.ProxyID)
+	result, err := h.antigravityOAuthService.GenerateAuthURL(c.Request.Context(), jsonInt64Ptr(req.ProxyID))
 	if err != nil {
 		response.InternalError(c, "生成授权链接失败: "+err.Error())
 		return
@@ -37,10 +37,10 @@ func (h *AntigravityOAuthHandler) GenerateAuthURL(c *gin.Context) {
 }
 
 type AntigravityExchangeCodeRequest struct {
-	SessionID string `json:"session_id" binding:"required"`
-	State     string `json:"state" binding:"required"`
-	Code      string `json:"code" binding:"required"`
-	ProxyID   *int64 `json:"proxy_id"`
+	SessionID string     `json:"session_id" binding:"required"`
+	State     string     `json:"state" binding:"required"`
+	Code      string     `json:"code" binding:"required"`
+	ProxyID   *jsonInt64 `json:"proxy_id"`
 }
 
 // ExchangeCode 用 authorization code 交换 token
@@ -56,7 +56,7 @@ func (h *AntigravityOAuthHandler) ExchangeCode(c *gin.Context) {
 		SessionID: req.SessionID,
 		State:     req.State,
 		Code:      req.Code,
-		ProxyID:   req.ProxyID,
+		ProxyID:   jsonInt64Ptr(req.ProxyID),
 	})
 	if err != nil {
 		response.BadRequest(c, "Token 交换失败: "+err.Error())
@@ -68,8 +68,8 @@ func (h *AntigravityOAuthHandler) ExchangeCode(c *gin.Context) {
 
 // AntigravityRefreshTokenRequest represents the request for validating Antigravity refresh token
 type AntigravityRefreshTokenRequest struct {
-	RefreshToken string `json:"refresh_token" binding:"required"`
-	ProxyID      *int64 `json:"proxy_id"`
+	RefreshToken string     `json:"refresh_token" binding:"required"`
+	ProxyID      *jsonInt64 `json:"proxy_id"`
 }
 
 // RefreshToken validates an Antigravity refresh token and returns full token info
@@ -81,7 +81,7 @@ func (h *AntigravityOAuthHandler) RefreshToken(c *gin.Context) {
 		return
 	}
 
-	tokenInfo, err := h.antigravityOAuthService.ValidateRefreshToken(c.Request.Context(), req.RefreshToken, req.ProxyID)
+	tokenInfo, err := h.antigravityOAuthService.ValidateRefreshToken(c.Request.Context(), req.RefreshToken, jsonInt64Ptr(req.ProxyID))
 	if err != nil {
 		response.ErrorFrom(c, err)
 		return

@@ -1,7 +1,7 @@
-import type { AdminGroup } from '@/types'
+import type { AdminGroup, EntityID } from '@/types'
 
 export interface ApiKeyGroupFilterOption {
-  value: number | null
+  value: EntityID | null
   label: string
   kind?: 'group'
   disabled?: boolean

@@ -91,7 +91,7 @@ export const adminPaymentAPI = {
     page_size?: number
     status?: string
     payment_type?: string
-    user_id?: number
+    user_id?: string | number
     keyword?: string
     start_date?: string
     end_date?: string
@@ -101,27 +101,27 @@ export const adminPaymentAPI = {
   },
 
   /** Get a specific order by ID */
-  getOrder(id: number) {
+  getOrder(id: string | number) {
     return apiClient.get<PaymentOrder>(`/admin/payment/orders/${id}`)
   },
 
   /** Cancel an order (admin) */
-  cancelOrder(id: number) {
+  cancelOrder(id: string | number) {
     return apiClient.post(`/admin/payment/orders/${id}/cancel`)
   },
 
   /** Retry recharge for a failed order */
-  retryRecharge(id: number) {
+  retryRecharge(id: string | number) {
     return apiClient.post(`/admin/payment/orders/${id}/retry`)
   },
 
   /** Process a refund */
-  refundOrder(id: number, data: { amount: number; reason: string; deduct_balance?: boolean; force?: boolean }) {
+  refundOrder(id: string | number, data: { amount: number; reason: string; deduct_balance?: boolean; force?: boolean }) {
     return apiClient.post<RefundResult>(`/admin/payment/orders/${id}/refund`, data)
   },
 
   /** Query and finalize a pending refund */
-  queryRefund(id: number) {
+  queryRefund(id: string | number) {
     return apiClient.post<RefundResult>(`/admin/payment/orders/${id}/refund/query`)
   },
 
@@ -138,12 +138,12 @@ export const adminPaymentAPI = {
   },
 
   /** Update a payment channel */
-  updateChannel(id: number, data: Partial<PaymentChannel>) {
+  updateChannel(id: string | number, data: Partial<PaymentChannel>) {
     return apiClient.put<PaymentChannel>(`/admin/payment/channels/${id}`, data)
   },
 
   /** Delete a payment channel */
-  deleteChannel(id: number) {
+  deleteChannel(id: string | number) {
     return apiClient.delete(`/admin/payment/channels/${id}`)
   },
 
@@ -160,12 +160,12 @@ export const adminPaymentAPI = {
   },
 
   /** Update a subscription plan */
-  updatePlan(id: number, data: Record<string, unknown>) {
+  updatePlan(id: string | number, data: Record<string, unknown>) {
     return apiClient.put<SubscriptionPlan>(`/admin/payment/plans/${id}`, data)
   },
 
   /** Delete a subscription plan */
-  deletePlan(id: number) {
+  deletePlan(id: string | number) {
     return apiClient.delete(`/admin/payment/plans/${id}`)
   },
 
@@ -182,12 +182,12 @@ export const adminPaymentAPI = {
   },
 
   /** Update a provider instance */
-  updateProvider(id: number, data: Partial<ProviderInstance>) {
+  updateProvider(id: string | number, data: Partial<ProviderInstance>) {
     return apiClient.put<ProviderInstance>(`/admin/payment/providers/${id}`, data)
   },
 
   /** Delete a provider instance */
-  deleteProvider(id: number) {
+  deleteProvider(id: string | number) {
     return apiClient.delete(`/admin/payment/providers/${id}`)
   }
 }

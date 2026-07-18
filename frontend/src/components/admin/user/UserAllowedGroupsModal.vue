@@ -188,7 +188,7 @@ import BaseDialog from '@/components/common/BaseDialog.vue'
 import PlatformIcon from '@/components/common/PlatformIcon.vue'
 
 interface GroupRateConfig {
-  groupId: number
+  groupId: string | number
   groupName: string
   platform: GroupPlatform
   isExclusive: boolean
@@ -204,7 +204,7 @@ const appStore = useAppStore()
 
 const groups = ref<Group[]>([])
 const groupConfigs = ref<GroupRateConfig[]>([])
-const originalGroupRates = ref<Record<number, number>>({}) // 记录原始专属倍率，用于检测删除
+const originalGroupRates = ref<Record<string | number, number>>({}) // 记录原始专属倍率，用于检测删除
 const loading = ref(false)
 const submitting = ref(false)
 
@@ -256,14 +256,14 @@ const load = async () => {
   }
 }
 
-const toggleExclusiveGroup = (groupId: number) => {
+const toggleExclusiveGroup = (groupId: string | number) => {
   const config = groupConfigs.value.find((c) => c.groupId === groupId)
   if (config && config.isExclusive) {
     config.isSelected = !config.isSelected
   }
 }
 
-const updateCustomRate = (groupId: number, value: string) => {
+const updateCustomRate = (groupId: string | number, value: string) => {
   const config = groupConfigs.value.find((c) => c.groupId === groupId)
   if (config) {
     if (value === '' || value === null || value === undefined) {
@@ -286,7 +286,7 @@ const handleSave = async () => {
     // 构建 group_rates
     // - 有新专属倍率: 设置为该值
     // - 原本有专属倍率但现在被清空: 设置为 null（表示删除）
-    const groupRates: Record<number, number | null> = {}
+    const groupRates: Record<string | number, number | null> = {}
     for (const c of groupConfigs.value) {
       const hadOriginalRate = originalGroupRates.value[c.groupId] !== undefined
 

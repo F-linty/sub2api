@@ -3669,7 +3669,7 @@ const poolModeRetryStatusCodesInput = ref('')
 
 function parsePoolModeRetryStatusCodes(input: string): number[] {
   if (!input || !input.trim()) return []
-  const seen = new Set<number>()
+  const seen = new Set<string | number>()
   const out: number[] = []
   for (const token of input.split(/[,\s]+/)) {
     const trimmed = token.trim()
@@ -3881,8 +3881,8 @@ const umqModeOptions = computed(() => [
   { value: 'serialize', label: t('admin.accounts.quotaControl.rpmLimit.umqModeSerialize') },
 ])
 const tlsFingerprintEnabled = ref(false)
-const tlsFingerprintProfileId = ref<number | null>(null)
-const tlsFingerprintProfiles = ref<{ id: number; name: string }[]>([])
+const tlsFingerprintProfileId = ref<string | number | null>(null)
+const tlsFingerprintProfiles = ref<{ id: string | number; name: string }[]>([])
 const sessionIdMaskingEnabled = ref(false)
 const cacheTTLOverrideEnabled = ref(false)
 const cacheTTLOverrideTarget = ref<string>('5m')

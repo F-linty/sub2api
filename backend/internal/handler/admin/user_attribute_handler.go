@@ -60,7 +60,7 @@ type UpdateUserAttributesRequest struct {
 
 // BatchGetUserAttributesRequest represents batch get user attributes request
 type BatchGetUserAttributesRequest struct {
-	UserIDs []int64 `json:"user_ids" binding:"required"`
+	UserIDs jsonInt64Slice `json:"user_ids" binding:"required"`
 }
 
 // BatchUserAttributesResponse represents batch user attributes response
@@ -331,7 +331,7 @@ func (h *UserAttributeHandler) GetBatchUserAttributes(c *gin.Context) {
 		return
 	}
 
-	userIDs := normalizeInt64IDList(req.UserIDs)
+	userIDs := normalizeInt64IDList(req.UserIDs.Int64s())
 	if len(userIDs) == 0 {
 		response.Success(c, BatchUserAttributesResponse{Attributes: map[int64]map[int64]string{}})
 		return

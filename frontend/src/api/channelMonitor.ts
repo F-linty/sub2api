@@ -22,7 +22,7 @@ export interface MonitorTimelinePoint {
 }
 
 export interface UserMonitorView {
-  id: number
+  id: string | number
   name: string
   provider: Provider
   group_name: string
@@ -50,7 +50,7 @@ export interface UserMonitorModelDetail {
 }
 
 export interface UserMonitorDetail {
-  id: number
+  id: string | number
   name: string
   provider: Provider
   group_name: string
@@ -70,7 +70,7 @@ export async function list(options?: { signal?: AbortSignal }): Promise<UserMoni
 /**
  * Get detailed status (multi-window availability + latency) for a single monitor.
  */
-export async function status(id: number): Promise<UserMonitorDetail> {
+export async function status(id: string | number): Promise<UserMonitorDetail> {
   const { data } = await apiClient.get<UserMonitorDetail>(`/channel-monitors/${id}/status`)
   return data
 }

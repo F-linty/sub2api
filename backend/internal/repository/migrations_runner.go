@@ -50,6 +50,8 @@ CREATE TABLE IF NOT EXISTS atlas_schema_revisions (
 // 任何稳定的 int64 值都可以，只要不与同一数据库中的其他锁冲突即可。
 const migrationsAdvisoryLockID int64 = 694208311321144027
 const migrationsLockRetryInterval = 500 * time.Millisecond
+const migrationTransientRetryInterval = 2 * time.Second
+const migrationTransientRetryTimeout = 2 * time.Minute
 const nonTransactionalMigrationSuffix = "_notx.sql"
 const paymentOrdersOutTradeNoUniqueMigration = "120_enforce_payment_orders_out_trade_no_unique_notx.sql"
 const paymentOrdersOutTradeNoUniqueIndex = "paymentorder_out_trade_no_unique"
@@ -201,6 +203,13 @@ func applyMigrationsFS(ctx context.Context, db *sql.DB, fsys fs.FS) error {
 			return fmt.Errorf("check migration %s: %w", name, rowErr)
 		}
 
+		if shouldRecordMigrationWithoutApplying(name) {
+			if _, err := db.ExecContext(ctx, "INSERT INTO schema_migrations (filename, checksum) VALUES ($1, $2)", name, checksum); err != nil {
+				return fmt.Errorf("record skipped migration %s: %w", name, err)
+			}
+			continue
+		}
+
 		nonTx, err := validateMigrationExecutionMode(name, content)
 		if err != nil {
 			return fmt.Errorf("validate migration %s: %w", name, err)
@@ -233,6 +242,22 @@ func applyMigrationsFS(ctx context.Context, db *sql.DB, fsys fs.FS) error {
 		}
 
 		// 默认迁移在事务中执行，确保原子性：要么完全成功，要么完全回滚。
+		if err := applyTransactionalMigration(ctx, db, name, content, checksum); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func shouldRecordMigrationWithoutApplying(name string) bool {
+	return CurrentDatabaseDialect().Name() == DatabaseTypeCockroachDB &&
+		name == latestAPIKeyIPIndexMigration
+}
+
+func applyTransactionalMigration(ctx context.Context, db *sql.DB, name, content, checksum string) error {
+	deadline := time.Now().Add(migrationTransientRetryTimeout)
+	for {
 		tx, err := db.BeginTx(ctx, nil)
 		if err != nil {
 			return fmt.Errorf("begin migration %s: %w", name, err)
@@ -241,6 +266,9 @@ func applyMigrationsFS(ctx context.Context, db *sql.DB, fsys fs.FS) error {
 		// 执行迁移 SQL
 		if _, err := tx.ExecContext(ctx, content); err != nil {
 			_ = tx.Rollback()
+			if waitForTransientMigrationError(ctx, err, deadline) {
+				continue
+			}
 			return fmt.Errorf("apply migration %s: %w", name, err)
 		}
 
@@ -252,12 +280,45 @@ func applyMigrationsFS(ctx context.Context, db *sql.DB, fsys fs.FS) error {
 
 		// 提交事务
 		if err := tx.Commit(); err != nil {
+			if isUnexpectedTransactionStatusIdle(err) {
+				return nil
+			}
 			_ = tx.Rollback()
 			return fmt.Errorf("commit migration %s: %w", name, err)
 		}
-	}
 
-	return nil
+		return nil
+	}
+}
+
+func waitForTransientMigrationError(ctx context.Context, err error, deadline time.Time) bool {
+	if !isTransientMigrationError(err) || time.Now().After(deadline) {
+		return false
+	}
+	timer := time.NewTimer(migrationTransientRetryInterval)
+	defer timer.Stop()
+	select {
+	case <-ctx.Done():
+		return false
+	case <-timer.C:
+		return true
+	}
+}
+
+func isTransientMigrationError(err error) bool {
+	if err == nil {
+		return false
+	}
+	msg := strings.ToLower(err.Error())
+	return strings.Contains(msg, "being backfilled") ||
+		strings.Contains(msg, "schema change") && strings.Contains(msg, "in progress")
+}
+
+func isUnexpectedTransactionStatusIdle(err error) bool {
+	if err == nil {
+		return false
+	}
+	return strings.Contains(err.Error(), "unexpected transaction status idle")
 }
 
 func prepareNonTransactionalMigration(ctx context.Context, db *sql.DB, name string) error {
@@ -337,6 +398,10 @@ func findDuplicatePaymentOrderOutTradeNos(ctx context.Context, db *sql.DB) ([]st
 }
 
 func indexIsInvalid(ctx context.Context, db *sql.DB, indexName string) (bool, error) {
+	if !CurrentDatabaseDialect().SupportsInvalidIndexCatalog() {
+		return false, nil
+	}
+
 	var invalid bool
 	err := db.QueryRowContext(ctx, `
 		SELECT EXISTS (
@@ -525,6 +590,9 @@ func stripSQLLineComment(s string) string {
 // Advisory Lock 是一种轻量级的锁机制，不与任何特定的数据库对象关联。
 // 它非常适合用于应用层面的分布式锁场景，如迁移序列化。
 func pgAdvisoryLock(ctx context.Context, db *sql.DB) error {
+	if !CurrentDatabaseDialect().SupportsAdvisoryLocks() {
+		return nil
+	}
 	ticker := time.NewTicker(migrationsLockRetryInterval)
 	defer ticker.Stop()
 
@@ -547,6 +615,9 @@ func pgAdvisoryLock(ctx context.Context, db *sql.DB) error {
 // pgAdvisoryUnlock 释放 PostgreSQL Advisory Lock。
 // 必须在获取锁后确保释放，否则会阻塞其他实例的迁移操作。
 func pgAdvisoryUnlock(ctx context.Context, db *sql.DB) error {
+	if !CurrentDatabaseDialect().SupportsAdvisoryLocks() {
+		return nil
+	}
 	_, err := db.ExecContext(ctx, "SELECT pg_advisory_unlock($1)", migrationsAdvisoryLockID)
 	if err != nil {
 		return fmt.Errorf("release migrations lock: %w", err)

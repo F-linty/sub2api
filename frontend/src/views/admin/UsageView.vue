@@ -252,7 +252,7 @@ const modelNameOptions = computed(() =>
   Array.from(new Set(requestedModelStats.value.map((m) => m.model).filter(Boolean))).sort()
 )
 
-const handleUserClick = async (userId: number) => {
+const handleUserClick = async (userId: string | number) => {
   try {
     const user = await adminAPI.users.getById(userId, true)
     balanceHistoryUser.value = user
@@ -264,7 +264,7 @@ const handleUserClick = async (userId: number) => {
 
 // Drill down from the per-user token ranking: scope the whole usage view to
 // that user and jump to the usage-detail tab so the drill-down is visible.
-const handleRankingSelectUser = (userId: number, email: string) => {
+const handleRankingSelectUser = (userId: string | number, email: string) => {
   filters.value = { ...filters.value, user_id: userId }
   usageFiltersRef.value?.setUserKeyword?.(email || '')
   activeTab.value = 'usage'
@@ -764,7 +764,7 @@ const errTotal = ref(0)
 const errSortBy = ref('created_at')
 const errSortOrder = ref<'asc' | 'desc'>('desc')
 const showErrorModal = ref(false)
-const selectedErrorId = ref<number | null>(null)
+const selectedErrorId = ref<string | number | null>(null)
 
 // 注意：'YYYY-MM-DDT00:00:00' 无时区后缀，按本地时区解析后再转 UTC——与页面其它日期处理语义一致，刻意如此，勿改成 'T00:00:00Z'
 const toRFC3339 = (d: string | undefined, endOfDay = false): string | undefined =>
@@ -808,7 +808,7 @@ const onErrSort = (sortBy: string, sortOrder: 'asc' | 'desc') => {
 }
 const onErrPage = (p: number) => { errPage.value = p; loadAdminErrors() }
 const onErrPageSize = (s: number) => { errPageSize.value = s; errPage.value = 1; loadAdminErrors() }
-const openError = (id: number) => { selectedErrorId.value = id; showErrorModal.value = true }
+const openError = (id: string | number) => { selectedErrorId.value = id; showErrorModal.value = true }
 
 const showColumnDropdown = ref(false)
 const columnDropdownRef = ref<HTMLElement | null>(null)

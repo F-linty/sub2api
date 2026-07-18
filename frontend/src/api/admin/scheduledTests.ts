@@ -16,7 +16,7 @@ import type {
  * @param accountId - Account ID
  * @returns List of scheduled test plans
  */
-export async function listByAccount(accountId: number): Promise<ScheduledTestPlan[]> {
+export async function listByAccount(accountId: string | number): Promise<ScheduledTestPlan[]> {
   const { data } = await apiClient.get<ScheduledTestPlan[]>(
     `/admin/accounts/${accountId}/scheduled-test-plans`
   )
@@ -42,7 +42,7 @@ export async function create(req: CreateScheduledTestPlanRequest): Promise<Sched
  * @param req - Fields to update
  * @returns Updated plan
  */
-export async function update(id: number, req: UpdateScheduledTestPlanRequest): Promise<ScheduledTestPlan> {
+export async function update(id: string | number, req: UpdateScheduledTestPlanRequest): Promise<ScheduledTestPlan> {
   const { data } = await apiClient.put<ScheduledTestPlan>(
     `/admin/scheduled-test-plans/${id}`,
     req
@@ -54,7 +54,7 @@ export async function update(id: number, req: UpdateScheduledTestPlanRequest): P
  * Delete a scheduled test plan
  * @param id - Plan ID
  */
-export async function deletePlan(id: number): Promise<void> {
+export async function deletePlan(id: string | number): Promise<void> {
   await apiClient.delete(`/admin/scheduled-test-plans/${id}`)
 }
 
@@ -64,7 +64,7 @@ export async function deletePlan(id: number): Promise<void> {
  * @param limit - Optional max number of results to return
  * @returns List of test results
  */
-export async function listResults(planId: number, limit?: number): Promise<ScheduledTestResult[]> {
+export async function listResults(planId: string | number, limit?: number): Promise<ScheduledTestResult[]> {
   const { data } = await apiClient.get<ScheduledTestResult[]>(
     `/admin/scheduled-test-plans/${planId}/results`,
     {

@@ -39,8 +39,8 @@ func NewOpenAIOAuthHandler(
 
 // OpenAIGenerateAuthURLRequest represents the request for generating OpenAI auth URL
 type OpenAIGenerateAuthURLRequest struct {
-	ProxyID     *int64 `json:"proxy_id"`
-	RedirectURI string `json:"redirect_uri"`
+	ProxyID     *jsonInt64 `json:"proxy_id"`
+	RedirectURI string     `json:"redirect_uri"`
 }
 
 // GenerateAuthURL generates OpenAI OAuth authorization URL
@@ -54,7 +54,7 @@ func (h *OpenAIOAuthHandler) GenerateAuthURL(c *gin.Context) {
 
 	result, err := h.openaiOAuthService.GenerateAuthURL(
 		c.Request.Context(),
-		req.ProxyID,
+		jsonInt64Ptr(req.ProxyID),
 		req.RedirectURI,
 		oauthPlatformFromPath(c),
 	)
@@ -68,11 +68,11 @@ func (h *OpenAIOAuthHandler) GenerateAuthURL(c *gin.Context) {
 
 // OpenAIExchangeCodeRequest represents the request for exchanging OpenAI auth code
 type OpenAIExchangeCodeRequest struct {
-	SessionID   string `json:"session_id" binding:"required"`
-	Code        string `json:"code" binding:"required"`
-	State       string `json:"state" binding:"required"`
-	RedirectURI string `json:"redirect_uri"`
-	ProxyID     *int64 `json:"proxy_id"`
+	SessionID   string     `json:"session_id" binding:"required"`
+	Code        string     `json:"code" binding:"required"`
+	State       string     `json:"state" binding:"required"`
+	RedirectURI string     `json:"redirect_uri"`
+	ProxyID     *jsonInt64 `json:"proxy_id"`
 }
 
 // ExchangeCode exchanges OpenAI authorization code for tokens
@@ -89,7 +89,7 @@ func (h *OpenAIOAuthHandler) ExchangeCode(c *gin.Context) {
 		Code:        req.Code,
 		State:       req.State,
 		RedirectURI: req.RedirectURI,
-		ProxyID:     req.ProxyID,
+		ProxyID:     jsonInt64Ptr(req.ProxyID),
 	})
 	if err != nil {
 		response.ErrorFrom(c, err)
@@ -101,10 +101,10 @@ func (h *OpenAIOAuthHandler) ExchangeCode(c *gin.Context) {
 
 // OpenAIRefreshTokenRequest represents the request for refreshing OpenAI token
 type OpenAIRefreshTokenRequest struct {
-	RefreshToken string `json:"refresh_token"`
-	RT           string `json:"rt"`
-	ClientID     string `json:"client_id"`
-	ProxyID      *int64 `json:"proxy_id"`
+	RefreshToken string     `json:"refresh_token"`
+	RT           string     `json:"rt"`
+	ClientID     string     `json:"client_id"`
+	ProxyID      *jsonInt64 `json:"proxy_id"`
 }
 
 type OpenAICodexPATCreateRequest struct {
@@ -112,7 +112,7 @@ type OpenAICodexPATCreateRequest struct {
 	Name                    string         `json:"name"`
 	Notes                   *string        `json:"notes"`
 	GroupIDs                []int64        `json:"group_ids"`
-	ProxyID                 *int64         `json:"proxy_id"`
+	ProxyID                 *jsonInt64     `json:"proxy_id"`
 	Concurrency             *int           `json:"concurrency"`
 	Priority                *int           `json:"priority"`
 	RateMultiplier          *float64       `json:"rate_multiplier"`
@@ -144,7 +144,7 @@ func (h *OpenAIOAuthHandler) RefreshToken(c *gin.Context) {
 
 	var proxyURL string
 	if req.ProxyID != nil {
-		proxy, err := h.adminService.GetProxy(c.Request.Context(), *req.ProxyID)
+		proxy, err := h.adminService.GetProxy(c.Request.Context(), req.ProxyID.Int64())
 		if err == nil && proxy != nil {
 			proxyURL = proxy.URL()
 		}
@@ -234,15 +234,15 @@ func (h *OpenAIOAuthHandler) RefreshAccountToken(c *gin.Context) {
 // POST /api/v1/admin/openai/create-from-oauth
 func (h *OpenAIOAuthHandler) CreateAccountFromOAuth(c *gin.Context) {
 	var req struct {
-		SessionID   string  `json:"session_id" binding:"required"`
-		Code        string  `json:"code" binding:"required"`
-		State       string  `json:"state" binding:"required"`
-		RedirectURI string  `json:"redirect_uri"`
-		ProxyID     *int64  `json:"proxy_id"`
-		Name        string  `json:"name"`
-		Concurrency int     `json:"concurrency"`
-		Priority    int     `json:"priority"`
-		GroupIDs    []int64 `json:"group_ids"`
+		SessionID   string     `json:"session_id" binding:"required"`
+		Code        string     `json:"code" binding:"required"`
+		State       string     `json:"state" binding:"required"`
+		RedirectURI string     `json:"redirect_uri"`
+		ProxyID     *jsonInt64 `json:"proxy_id"`
+		Name        string     `json:"name"`
+		Concurrency int        `json:"concurrency"`
+		Priority    int        `json:"priority"`
+		GroupIDs    []int64    `json:"group_ids"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		response.BadRequest(c, "Invalid request: "+err.Error())
@@ -255,7 +255,7 @@ func (h *OpenAIOAuthHandler) CreateAccountFromOAuth(c *gin.Context) {
 		Code:        req.Code,
 		State:       req.State,
 		RedirectURI: req.RedirectURI,
-		ProxyID:     req.ProxyID,
+		ProxyID:     jsonInt64Ptr(req.ProxyID),
 	})
 	if err != nil {
 		response.ErrorFrom(c, err)
@@ -283,7 +283,7 @@ func (h *OpenAIOAuthHandler) CreateAccountFromOAuth(c *gin.Context) {
 		Type:        "oauth",
 		Credentials: credentials,
 		Extra:       nil,
-		ProxyID:     req.ProxyID,
+		ProxyID:     jsonInt64Ptr(req.ProxyID),
 		Concurrency: req.Concurrency,
 		Priority:    req.Priority,
 		GroupIDs:    req.GroupIDs,
@@ -327,7 +327,7 @@ func (h *OpenAIOAuthHandler) CreateAccountFromCodexPAT(c *gin.Context) {
 
 	var proxyURL string
 	if req.ProxyID != nil {
-		proxy, err := h.adminService.GetProxy(c.Request.Context(), *req.ProxyID)
+		proxy, err := h.adminService.GetProxy(c.Request.Context(), req.ProxyID.Int64())
 		if err != nil {
 			response.ErrorFrom(c, err)
 			return
@@ -374,7 +374,7 @@ func (h *OpenAIOAuthHandler) CreateAccountFromCodexPAT(c *gin.Context) {
 		Type:                  service.AccountTypeOAuth,
 		Credentials:           credentials,
 		Extra:                 extra,
-		ProxyID:               req.ProxyID,
+		ProxyID:               jsonInt64Ptr(req.ProxyID),
 		Concurrency:           concurrency,
 		Priority:              priority,
 		RateMultiplier:        req.RateMultiplier,

@@ -87,7 +87,7 @@ import Icon from '@/components/icons/Icon.vue'
 interface Props {
   show: boolean
   user: AdminUser | null
-  oldGroup: { id: number; name: string } | null
+  oldGroup: { id: string | number; name: string } | null
   allGroups: AdminGroup[]
 }
 
@@ -96,7 +96,7 @@ const emit = defineEmits(['close', 'success'])
 const { t } = useI18n()
 const appStore = useAppStore()
 
-const selectedGroupId = ref<number | null>(null)
+const selectedGroupId = ref<string | number | null>(null)
 const submitting = ref(false)
 
 // 可选的专属标准分组（排除当前 oldGroup）

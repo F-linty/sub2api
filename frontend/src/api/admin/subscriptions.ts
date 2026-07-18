@@ -25,8 +25,8 @@ export async function list(
   pageSize: number = 20,
   filters?: {
     status?: 'active' | 'expired' | 'revoked' | 'suspended'
-    user_id?: number
-    group_id?: number
+    user_id?: string | number
+    group_id?: string | number
     platform?: string
     sort_by?: string
     sort_order?: 'asc' | 'desc'
@@ -54,7 +54,7 @@ export async function list(
  * @param id - Subscription ID
  * @returns Subscription details
  */
-export async function getById(id: number): Promise<UserSubscription> {
+export async function getById(id: string | number): Promise<UserSubscription> {
   const { data } = await apiClient.get<UserSubscription>(`/admin/subscriptions/${id}`)
   return data
 }
@@ -64,7 +64,7 @@ export async function getById(id: number): Promise<UserSubscription> {
  * @param id - Subscription ID
  * @returns Subscription progress with usage stats
  */
-export async function getProgress(id: number): Promise<SubscriptionProgress> {
+export async function getProgress(id: string | number): Promise<SubscriptionProgress> {
   const { data } = await apiClient.get<SubscriptionProgress>(`/admin/subscriptions/${id}/progress`)
   return data
 }
@@ -101,7 +101,7 @@ export async function bulkAssign(
  * @returns Updated subscription
  */
 export async function extend(
-  id: number,
+  id: string | number,
   request: ExtendSubscriptionRequest
 ): Promise<UserSubscription> {
   const { data } = await apiClient.post<UserSubscription>(
@@ -116,7 +116,7 @@ export async function extend(
  * @param id - Subscription ID
  * @returns Success confirmation
  */
-export async function revoke(id: number): Promise<{ message: string }> {
+export async function revoke(id: string | number): Promise<{ message: string }> {
   const { data } = await apiClient.post<{ message: string }>(`/admin/subscriptions/${id}/revoke`)
   return data
 }
@@ -126,7 +126,7 @@ export async function revoke(id: number): Promise<{ message: string }> {
  * @param id - Subscription ID
  * @returns Restored subscription
  */
-export async function restore(id: number): Promise<UserSubscription> {
+export async function restore(id: string | number): Promise<UserSubscription> {
   const { data } = await apiClient.post<UserSubscription>(`/admin/subscriptions/${id}/restore`)
   return data
 }
@@ -138,7 +138,7 @@ export async function restore(id: number): Promise<UserSubscription> {
  * @returns Updated subscription
  */
 export async function resetQuota(
-  id: number,
+  id: string | number,
   options: { daily: boolean; weekly: boolean; monthly: boolean }
 ): Promise<UserSubscription> {
   const { data } = await apiClient.post<UserSubscription>(
@@ -156,7 +156,7 @@ export async function resetQuota(
  * @returns Paginated list of subscriptions in the group
  */
 export async function listByGroup(
-  groupId: number,
+  groupId: string | number,
   page: number = 1,
   pageSize: number = 20
 ): Promise<PaginatedResponse<UserSubscription>> {
@@ -177,7 +177,7 @@ export async function listByGroup(
  * @returns Paginated list of user's subscriptions
  */
 export async function listByUser(
-  userId: number,
+  userId: string | number,
   page: number = 1,
   pageSize: number = 20
 ): Promise<PaginatedResponse<UserSubscription>> {

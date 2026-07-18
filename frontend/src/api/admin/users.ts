@@ -4,7 +4,7 @@
  */
 
 import { apiClient } from '../client'
-import type { AdminUser, UpdateUserRequest, PaginatedResponse, ApiKey } from '@/types'
+import type { AdminUser, EntityID, UpdateUserRequest, PaginatedResponse, ApiKey } from '@/types'
 
 export interface AdminBindAuthIdentityChannelRequest {
   channel: string
@@ -32,7 +32,7 @@ export interface AdminBoundAuthIdentityChannel {
 }
 
 export interface AdminBoundAuthIdentity {
-  user_id: number
+  user_id: string | number
   provider_type: string
   provider_key: string
   provider_subject: string
@@ -60,8 +60,8 @@ export async function list(
     role?: 'admin' | 'user'
     search?: string
     group_name?: string         // fuzzy filter by allowed group name
-    api_key_group_id?: number   // filter users by the group their API keys are bound to
-    attributes?: Record<number, string>  // attributeId -> value
+    api_key_group_id?: EntityID   // filter users by the group their API keys are bound to
+    attributes?: Record<string | number, string>  // attributeId -> value
     include_subscriptions?: boolean
     sort_by?: string
     sort_order?: 'asc' | 'desc'
@@ -105,7 +105,7 @@ export async function list(
  * @param includeDeleted - Whether to include soft-deleted users
  * @returns User details
  */
-export async function getById(id: number, includeDeleted = false): Promise<AdminUser> {
+export async function getById(id: string | number, includeDeleted = false): Promise<AdminUser> {
   const url = includeDeleted ? `/admin/users/${id}?include_deleted=true` : `/admin/users/${id}`
   const { data } = await apiClient.get<AdminUser>(url)
   return data
@@ -125,7 +125,7 @@ export async function create(userData: {
   balance?: number
   concurrency?: number
   rpm_limit?: number
-  allowed_groups?: number[] | null
+  allowed_groups?: EntityID[] | null
 }): Promise<AdminUser> {
   const { data } = await apiClient.post<AdminUser>('/admin/users', userData)
   return data
@@ -137,7 +137,7 @@ export async function create(userData: {
  * @param updates - Fields to update
  * @returns Updated user
  */
-export async function update(id: number, updates: UpdateUserRequest): Promise<AdminUser> {
+export async function update(id: string | number, updates: UpdateUserRequest): Promise<AdminUser> {
   const { data } = await apiClient.put<AdminUser>(`/admin/users/${id}`, updates)
   return data
 }
@@ -147,7 +147,7 @@ export async function update(id: number, updates: UpdateUserRequest): Promise<Ad
  * @param id - User ID
  * @returns Success confirmation
  */
-export async function deleteUser(id: number): Promise<{ message: string }> {
+export async function deleteUser(id: string | number): Promise<{ message: string }> {
   const { data } = await apiClient.delete<{ message: string }>(`/admin/users/${id}`)
   return data
 }
@@ -161,7 +161,7 @@ export async function deleteUser(id: number): Promise<{ message: string }> {
  * @returns Updated user
  */
 export async function updateBalance(
-  id: number,
+  id: string | number,
   balance: number,
   operation: 'set' | 'add' | 'subtract' = 'set',
   notes?: string
@@ -180,7 +180,7 @@ export async function updateBalance(
  * @param concurrency - New concurrency limit
  * @returns Updated user
  */
-export async function updateConcurrency(id: number, concurrency: number): Promise<AdminUser> {
+export async function updateConcurrency(id: string | number, concurrency: number): Promise<AdminUser> {
   return update(id, { concurrency })
 }
 
@@ -190,7 +190,7 @@ export async function updateConcurrency(id: number, concurrency: number): Promis
  * @param status - New status
  * @returns Updated user
  */
-export async function toggleStatus(id: number, status: 'active' | 'disabled'): Promise<AdminUser> {
+export async function toggleStatus(id: string | number, status: 'active' | 'disabled'): Promise<AdminUser> {
   return update(id, { status })
 }
 
@@ -199,7 +199,7 @@ export async function toggleStatus(id: number, status: 'active' | 'disabled'): P
  * @param id - User ID
  * @returns List of user's API keys
  */
-export async function getUserApiKeys(id: number): Promise<PaginatedResponse<ApiKey>> {
+export async function getUserApiKeys(id: string | number): Promise<PaginatedResponse<ApiKey>> {
   const { data } = await apiClient.get<PaginatedResponse<ApiKey>>(`/admin/users/${id}/api-keys`)
   return data
 }
@@ -211,7 +211,7 @@ export async function getUserApiKeys(id: number): Promise<PaginatedResponse<ApiK
  * @returns User usage statistics
  */
 export async function getUserUsageStats(
-  id: number,
+  id: string | number,
   period: string = 'month'
 ): Promise<{
   total_requests: number
@@ -232,19 +232,19 @@ export async function getUserUsageStats(
  * Balance history item returned from the API
  */
 export interface BalanceHistoryItem {
-  id: number
+  id: string | number
   code: string
   type: string
   value: number
   status: string
-  used_by: number | null
+  used_by: string | number | null
   used_at: string | null
   created_at: string
-  group_id: number | null
+  group_id: string | number | null
   validity_days: number
   notes: string
-  user?: { id: number; email: string } | null
-  group?: { id: number; name: string } | null
+  user?: { id: string | number; email: string } | null
+  group?: { id: string | number; name: string } | null
 }
 
 // Balance history response extends pagination with total_recharged summary
@@ -261,7 +261,7 @@ export interface BalanceHistoryResponse extends PaginatedResponse<BalanceHistory
  * @returns Paginated balance history with total_recharged
  */
 export async function getUserBalanceHistory(
-  id: number,
+  id: string | number,
   page: number = 1,
   pageSize: number = 20,
   type?: string
@@ -283,9 +283,9 @@ export async function getUserBalanceHistory(
  * @returns Number of migrated keys
  */
 export async function replaceGroup(
-  userId: number,
-  oldGroupId: number,
-  newGroupId: number
+  userId: string | number,
+  oldGroupId: EntityID,
+  newGroupId: EntityID
 ): Promise<{ migrated_keys: number }> {
   const { data } = await apiClient.post<{ migrated_keys: number }>(
     `/admin/users/${userId}/replace-group`,
@@ -295,7 +295,7 @@ export async function replaceGroup(
 }
 
 export async function bindUserAuthIdentity(
-  userId: number,
+  userId: string | number,
   input: AdminBindAuthIdentityRequest
 ): Promise<AdminBoundAuthIdentity> {
   const { data } = await apiClient.post<AdminBoundAuthIdentity>(
@@ -341,7 +341,7 @@ export interface PlatformQuotasResponse {
 /**
  * Get user's platform quotas
  */
-export async function getPlatformQuotas(id: number): Promise<PlatformQuotasResponse> {
+export async function getPlatformQuotas(id: string | number): Promise<PlatformQuotasResponse> {
   const { data } = await apiClient.get<PlatformQuotasResponse>(
     `/admin/users/${id}/platform-quotas`
   )
@@ -352,7 +352,7 @@ export async function getPlatformQuotas(id: number): Promise<PlatformQuotasRespo
  * Replace user's platform quotas (全量替换)
  */
 export async function updatePlatformQuotas(
-  id: number,
+  id: string | number,
   quotas: PlatformQuotaUpdateItem[]
 ): Promise<PlatformQuotasResponse> {
   const { data } = await apiClient.put<PlatformQuotasResponse>(
@@ -366,7 +366,7 @@ export async function updatePlatformQuotas(
  * Reset a single (platform, window) usage immediately
  */
 export async function resetPlatformQuotaWindow(
-  id: number,
+  id: string | number,
   platform: PlatformQuotaPlatform,
   window: PlatformQuotaWindow
 ): Promise<PlatformQuotasResponse> {

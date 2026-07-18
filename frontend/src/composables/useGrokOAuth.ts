@@ -23,7 +23,7 @@ export function useGrokOAuth() {
     error.value = ''
   }
 
-  const generateAuthUrl = async (proxyId: number | null | undefined): Promise<boolean> => {
+  const generateAuthUrl = async (proxyId: string | number | null | undefined): Promise<boolean> => {
     loading.value = true
     authUrl.value = ''
     sessionId.value = ''
@@ -52,7 +52,7 @@ export function useGrokOAuth() {
     code: string
     sessionId: string
     state: string
-    proxyId?: number | null
+    proxyId?: string | number | null
   }): Promise<GrokTokenInfo | null> => {
     const code = params.code?.trim()
     if (!code || !params.sessionId || !params.state) {
@@ -88,7 +88,7 @@ export function useGrokOAuth() {
 
   const validateRefreshToken = async (
     refreshToken: string,
-    proxyId?: number | null
+    proxyId?: string | number | null
   ): Promise<GrokTokenInfo | null> => {
     if (!refreshToken.trim()) {
       error.value = t('admin.accounts.oauth.grok.pleaseEnterRefreshToken')

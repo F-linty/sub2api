@@ -1177,6 +1177,7 @@ func (s *ServerConfig) Address() string {
 // DatabaseConfig 数据库连接配置
 // 性能优化：新增连接池参数，避免频繁创建/销毁连接
 type DatabaseConfig struct {
+	Type     string `mapstructure:"type"`
 	Host     string `mapstructure:"host"`
 	Port     int    `mapstructure:"port"`
 	User     string `mapstructure:"user"`
@@ -1450,14 +1451,16 @@ func load(allowMissingJWTSecret bool) (*Config, error) {
 	if dataDir := os.Getenv("DATA_DIR"); dataDir != "" {
 		viper.AddConfigPath(dataDir)
 	}
-	// 2. Docker data directory
-	viper.AddConfigPath("/app/data")
-	// 3. Current directory
-	viper.AddConfigPath(".")
-	// 4. Config subdirectory
-	viper.AddConfigPath("./config")
-	// 5. System config directory
-	viper.AddConfigPath("/etc/sub2api")
+	if os.Getenv("SUB2API_SKIP_DEFAULT_CONFIG_PATHS") != "true" {
+		// 2. Docker data directory
+		viper.AddConfigPath("/app/data")
+		// 3. Current directory
+		viper.AddConfigPath(".")
+		// 4. Config subdirectory
+		viper.AddConfigPath("./config")
+		// 5. System config directory
+		viper.AddConfigPath("/etc/sub2api")
+	}
 
 	// 环境变量支持
 	viper.AutomaticEnv()
@@ -1770,6 +1773,7 @@ func setDefaults() {
 	viper.SetDefault("dingtalk_connect.username_overwrite_policy", "if_empty")
 
 	// Database
+	viper.SetDefault("database.type", "auto")
 	viper.SetDefault("database.host", "localhost")
 	viper.SetDefault("database.port", 5432)
 	viper.SetDefault("database.user", "postgres")

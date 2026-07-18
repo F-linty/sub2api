@@ -203,7 +203,7 @@ function formatGatewayAmount(value: number): string {
   return formatPaymentAmount(value, currency.value, localeCode.value)
 }
 
-async function confirmAlipay(stripe: Stripe, clientSecret: string, orderId: number) {
+async function confirmAlipay(stripe: Stripe, clientSecret: string, orderId: string | number) {
   redirecting.value = true
   const returnUrl = window.location.origin + '/payment/result?order_id=' + orderId + '&status=success'
   const { error } = await stripe.confirmAlipayPayment(clientSecret, { return_url: returnUrl })

@@ -7,12 +7,13 @@ import { apiClient } from "../client";
 import type {
   CustomEndpoint,
   CustomMenuItem,
+  EntityID,
   LoginAgreementDocument,
   NotifyEmailEntry,
 } from "@/types";
 
 export interface DefaultSubscriptionSetting {
-  group_id: number;
+  group_id: EntityID;
   validity_days: number;
 }
 
@@ -198,9 +199,9 @@ export function normalizeDefaultSubscriptionSettings(
   if (!Array.isArray(subscriptions)) return [];
 
   return subscriptions
-    .filter((item) => item.group_id > 0 && item.validity_days > 0)
+    .filter((item) => String(item.group_id).trim() !== "" && String(item.group_id) !== "0" && item.validity_days > 0)
     .map((item) => ({
-      group_id: Math.floor(item.group_id),
+      group_id: item.group_id,
       validity_days: Math.min(
         36500,
         Math.max(1, Math.floor(item.validity_days)),
@@ -1275,7 +1276,7 @@ export interface OpenAIFastPolicyRule {
   service_tier: "all" | "priority" | "flex";
   action: "pass" | "filter" | "block" | "force_priority";
   scope: "all" | "oauth" | "apikey" | "bedrock";
-  user_ids?: number[];
+  user_ids?: EntityID[];
   error_message?: string;
   model_whitelist?: string[];
   fallback_action?: "pass" | "filter" | "block" | "force_priority";
@@ -1346,7 +1347,7 @@ export interface WebSearchProviderConfig {
   quota_limit: number | null;
   subscribed_at: number | null;
   quota_used?: number;
-  proxy_id: number | null;
+  proxy_id: string | number | null;
   expires_at: number | null;
 }
 

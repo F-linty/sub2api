@@ -56,7 +56,7 @@ const appStore = useAppStore()
 const items = ref<UserMonitorView[]>([])
 const loading = ref(false)
 const currentWindow = ref<MonitorWindow>('7d')
-const detailCache = reactive<Record<number, UserMonitorDetail>>({})
+const detailCache = reactive<Record<string | number, UserMonitorDetail>>({})
 const showDetail = ref(false)
 const detailTarget = ref<UserMonitorView | null>(null)
 
@@ -117,7 +117,7 @@ async function manualReload() {
   }
 }
 
-async function loadDetail(id: number, force = false) {
+async function loadDetail(id: string | number, force = false) {
   if (!force && detailCache[id]) return
   try {
     detailCache[id] = await fetchChannelMonitorDetail(id)

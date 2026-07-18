@@ -5,6 +5,8 @@ import (
 	"database/sql"
 	"hash/fnv"
 	"time"
+
+	"github.com/Wei-Shaw/sub2api/internal/pkg/dbdialect"
 )
 
 func hashAdvisoryLockID(key string) int64 {
@@ -15,6 +17,9 @@ func hashAdvisoryLockID(key string) int64 {
 
 func tryAcquireDBAdvisoryLock(ctx context.Context, db *sql.DB, lockID int64) (func(), bool) {
 	if db == nil {
+		return nil, false
+	}
+	if !dbdialect.Current().SupportsAdvisoryLocks() {
 		return nil, false
 	}
 	if ctx == nil {

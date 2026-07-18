@@ -3,6 +3,35 @@
 @tailwind utilities;
 
 @layer base {
+  :root {
+    --color-page: #ffffff;
+    --color-sidebar: #fffaf7;
+    --color-surface: #ffffff;
+    --color-surface-warm: #fffaf7;
+    --color-surface-soft: #faf8f6;
+    --color-mint-panel: #fff3ee;
+    --color-mint-active: #fbe7df;
+    --color-border-soft: #ebe4df;
+    --color-border-mint: #efe4dd;
+    --color-ink: #191817;
+    --color-muted: #74706d;
+    --color-brand: #c45b45;
+    --color-brand-deep: #a94735;
+    --color-ai-accent: #6b5ce7;
+    --color-action: #202020;
+    --color-content-panel: #fbfaf8;
+    --color-content-panel-strong: #f6f3ef;
+    --color-link-accent: #6b5ce7;
+    --color-status-success: #0f8f6a;
+    --color-status-success-bg: #eaf7f1;
+    --color-status-warning: #8a5a00;
+    --color-status-warning-bg: #fff4dc;
+    --color-status-danger: #873628;
+    --color-status-danger-bg: #fbe7df;
+    --color-status-info: #5f5b57;
+    --color-status-info-bg: #f3f1ee;
+  }
+
   * {
     @apply border-gray-200 dark:border-dark-700;
   }
@@ -12,8 +41,15 @@
   }
 
   body {
-    @apply bg-gray-50 text-gray-900 dark:bg-dark-950 dark:text-gray-100;
+    background: var(--color-page);
+    @apply text-slate-950 dark:bg-dark-950 dark:text-gray-100;
     @apply min-h-screen;
+  }
+
+  .dark body {
+    background:
+      radial-gradient(circle at 12% -10%, rgba(169, 71, 53, 0.2), transparent 24rem),
+      #020617;
   }
 
   /* 自定义滚动条 - 仅针对 Firefox，避免 Chrome 取消 webkit 的全局定制 */
@@ -67,51 +103,52 @@
   /* ============ 按钮样式 ============ */
   .btn {
     @apply inline-flex items-center justify-center gap-2;
-    @apply rounded-xl px-4 py-2.5 text-sm font-medium;
-    @apply transition-all duration-200 ease-out;
+    @apply rounded-2xl px-5 py-3 text-sm font-semibold;
+    @apply transition-colors duration-150 ease-out;
     @apply focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:ring-offset-2;
     @apply disabled:transform-none disabled:cursor-not-allowed disabled:opacity-50;
-    @apply active:scale-[0.98];
   }
 
   .btn-primary {
-    @apply bg-gradient-to-r from-primary-500 to-primary-600;
-    @apply text-white shadow-md shadow-primary-500/25;
-    @apply hover:from-primary-600 hover:to-primary-700 hover:shadow-lg hover:shadow-primary-500/30;
-    @apply dark:shadow-primary-500/20;
+    background: var(--color-action);
+    @apply text-white;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.08),
+      0 12px 22px -16px rgba(0, 0, 0, 0.68);
+    @apply hover:bg-[#2b2b2b];
+    @apply dark:bg-white dark:text-slate-950 dark:hover:bg-gray-200;
   }
 
   .btn-secondary {
-    @apply bg-white dark:bg-dark-800;
+    background: var(--color-surface);
+    @apply dark:bg-dark-800;
     @apply text-gray-700 dark:text-gray-200;
-    @apply border border-gray-200 dark:border-dark-600;
-    @apply shadow-sm hover:bg-gray-50 dark:hover:bg-dark-700;
-    @apply hover:border-gray-300 dark:hover:border-dark-500;
+    border-color: var(--color-border-soft);
+    @apply border dark:border-dark-600;
+    box-shadow: 0 1px 2px rgba(23, 23, 23, 0.04);
+    @apply hover:bg-primary-50/70 dark:hover:bg-dark-700;
+    @apply hover:border-primary-200 dark:hover:border-dark-500;
   }
 
   .btn-ghost {
     @apply bg-transparent text-gray-600 dark:text-gray-300;
-    @apply hover:bg-gray-100 dark:hover:bg-dark-800;
+    @apply hover:bg-primary-50 dark:hover:bg-dark-800;
   }
 
   .btn-danger {
-    @apply bg-gradient-to-r from-red-500 to-red-600;
-    @apply text-white shadow-md shadow-red-500/25;
-    @apply hover:from-red-600 hover:to-red-700 hover:shadow-lg hover:shadow-red-500/30;
+    background: var(--color-status-danger);
+    @apply text-white shadow-sm;
+    @apply hover:bg-[#6f3027];
   }
 
   .btn-success {
-    @apply bg-gradient-to-r from-emerald-500 to-emerald-600;
-    @apply text-white shadow-md shadow-emerald-500/25;
-    @apply hover:from-emerald-600 hover:to-emerald-700 hover:shadow-lg hover:shadow-emerald-500/30;
-    @apply dark:shadow-emerald-500/20;
+    @apply bg-emerald-600 text-white shadow-sm;
+    @apply hover:bg-emerald-700;
   }
 
   .btn-warning {
-    @apply bg-gradient-to-r from-amber-500 to-amber-600;
-    @apply text-white shadow-md shadow-amber-500/25;
-    @apply hover:from-amber-600 hover:to-amber-700 hover:shadow-lg hover:shadow-amber-500/30;
-    @apply dark:shadow-amber-500/20;
+    @apply bg-[#8a5a00] text-white shadow-sm;
+    @apply hover:bg-[#744c00];
   }
 
   .btn-stripe {
@@ -147,26 +184,28 @@
   }
 
   .btn-md {
-    @apply rounded-xl px-4 py-2 text-sm;
+    @apply rounded-lg px-4 py-2 text-sm;
   }
 
   .btn-lg {
-    @apply rounded-2xl px-6 py-3 text-base;
+    @apply rounded-lg px-6 py-3 text-base;
   }
 
   .btn-icon {
-    @apply rounded-xl p-2.5;
+    @apply rounded-lg p-2.5;
   }
 
   /* ============ 输入框样式 ============ */
   .input {
     @apply w-full rounded-xl px-4 py-2.5 text-sm;
-    @apply bg-white dark:bg-dark-800;
-    @apply border border-gray-200 dark:border-dark-600;
+    background: var(--color-surface);
+    @apply dark:bg-dark-800;
+    border-color: var(--color-border-soft);
+    @apply border dark:border-dark-600;
     @apply text-gray-900 dark:text-gray-100;
     @apply placeholder:text-gray-400 dark:placeholder:text-dark-400;
     @apply transition-all duration-200;
-    @apply focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/30;
+    @apply focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/10;
     @apply disabled:cursor-not-allowed disabled:bg-gray-100 dark:disabled:bg-dark-900;
   }
 
@@ -199,41 +238,45 @@
 
   /* ============ 玻璃效果 ============ */
   .glass {
-    @apply bg-white/80 backdrop-blur-xl dark:bg-dark-800/80;
+    @apply bg-white/95 dark:bg-dark-900/95;
   }
 
   .glass-card {
-    @apply bg-white/70 dark:bg-dark-800/70;
-    @apply backdrop-blur-xl;
-    @apply rounded-2xl;
-    @apply border border-white/20 dark:border-dark-700/50;
-    @apply shadow-glass;
-    @apply transition-all duration-300;
+    background: var(--color-surface);
+    @apply dark:bg-dark-800;
+    @apply rounded-lg;
+    border-color: var(--color-border-soft);
+    @apply border dark:border-dark-700;
+    box-shadow: none;
   }
 
   /* ============ 卡片样式 ============ */
   .card {
-    @apply bg-white dark:bg-dark-800/50;
-    @apply rounded-2xl;
-    @apply border border-gray-100 dark:border-dark-700/50;
-    @apply shadow-card;
-    @apply transition-all duration-300;
+    background: var(--color-surface);
+    @apply dark:bg-dark-800/80;
+    @apply rounded-lg;
+    border-color: var(--color-border-soft);
+    @apply border dark:border-dark-700;
+    box-shadow: none;
+    @apply transition-colors duration-150;
   }
 
   .card-hover {
-    @apply hover:-translate-y-0.5 hover:shadow-card-hover;
-    @apply hover:border-gray-200 dark:hover:border-dark-600;
+    @apply hover:shadow-none;
+    @apply hover:border-primary-200 dark:hover:border-dark-600;
   }
 
   .card-glass {
-    @apply bg-white/70 dark:bg-dark-800/70;
-    @apply backdrop-blur-xl;
-    @apply border border-white/20 dark:border-dark-700/50;
-    @apply shadow-glass;
+    background: var(--color-surface-warm);
+    @apply dark:bg-dark-800;
+    border-color: var(--color-border-soft);
+    @apply border dark:border-dark-700;
+    box-shadow: none;
   }
 
   .card-header {
-    @apply border-b border-gray-100 dark:border-dark-700;
+    border-color: var(--color-border-soft);
+    @apply border-b dark:border-dark-700;
     @apply px-6 py-4;
   }
 
@@ -242,7 +285,8 @@
   }
 
   .card-footer {
-    @apply border-t border-gray-100 dark:border-dark-700;
+    border-color: var(--color-border-soft);
+    @apply border-t dark:border-dark-700;
     @apply px-6 py-4;
   }
 
@@ -253,7 +297,7 @@
   }
 
   .stat-icon {
-    @apply h-12 w-12 rounded-xl;
+    @apply h-10 w-10 rounded-lg;
     @apply flex items-center justify-center;
     @apply text-xl;
   }
@@ -274,8 +318,42 @@
     @apply bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400;
   }
 
+  .metric-card {
+    @apply card p-4;
+    @apply hover:border-gray-300 dark:hover:border-dark-600;
+  }
+
+  .metric-row {
+    @apply flex items-center gap-3;
+  }
+
+  .metric-icon {
+    @apply flex h-9 w-9 shrink-0 items-center justify-center rounded-md;
+    @apply border text-gray-500;
+    border-color: var(--color-border-soft);
+    background: var(--color-surface-soft);
+    @apply dark:border-dark-600 dark:bg-dark-900/60 dark:text-gray-300;
+  }
+
+  .metric-icon-accent {
+    @apply border-primary-200 bg-primary-50 text-primary-600;
+    @apply dark:border-primary-900/50 dark:bg-primary-950/30 dark:text-primary-300;
+  }
+
+  .metric-label {
+    @apply text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400;
+  }
+
+  .metric-value {
+    @apply mt-0.5 text-xl font-semibold tabular-nums text-gray-950 dark:text-white;
+  }
+
+  .metric-note {
+    @apply mt-0.5 text-xs text-gray-500 dark:text-gray-400;
+  }
+
   .stat-value {
-    @apply text-2xl font-bold text-gray-900 dark:text-white truncate;
+    @apply truncate text-2xl font-semibold text-gray-950 dark:text-white;
   }
 
   .stat-label {
@@ -296,7 +374,9 @@
 
   /* ============ 表格样式 ============ */
   .table-container {
-    @apply overflow-x-auto rounded-xl border border-gray-200 dark:border-dark-700;
+    border-color: var(--color-border-soft);
+    @apply overflow-x-auto rounded-lg border dark:border-dark-700;
+    background: var(--color-surface);
   }
 
   .table {
@@ -306,14 +386,17 @@
   .table th {
     @apply px-4 py-3 text-left font-medium;
     @apply text-gray-600 dark:text-dark-300;
-    @apply bg-gray-50 dark:bg-dark-800/50;
-    @apply border-b border-gray-200 dark:border-dark-700;
+    background: var(--color-surface-soft);
+    @apply dark:bg-dark-800/50;
+    border-color: var(--color-border-soft);
+    @apply border-b dark:border-dark-700;
   }
 
   .table td {
     @apply px-4 py-3;
     @apply text-gray-700 dark:text-gray-300;
-    @apply border-b border-gray-100 dark:border-dark-800;
+    border-color: #f1ebe7;
+    @apply border-b dark:border-dark-800;
   }
 
   .table tr:last-child td {
@@ -322,45 +405,58 @@
 
   .table tbody tr {
     @apply transition-colors duration-150;
-    @apply hover:bg-gray-50 dark:hover:bg-dark-800/30;
+    @apply hover:bg-primary-50/55 dark:hover:bg-dark-800/30;
   }
 
   /* ============ 徽章样式 ============ */
   .badge {
     @apply inline-flex items-center gap-1;
-    @apply rounded-full px-2.5 py-0.5 text-xs font-medium;
+    @apply rounded-md px-2 py-0.5 text-xs font-medium;
   }
 
   .badge-primary {
-    @apply bg-primary-100 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400;
+    background: #f1efff;
+    color: var(--color-link-accent);
+    @apply dark:bg-violet-500/20 dark:text-violet-200;
   }
 
   .badge-success {
-    @apply bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400;
+    background: var(--color-status-success-bg);
+    color: var(--color-status-success);
+    @apply dark:bg-emerald-500/20 dark:text-emerald-200;
   }
 
   .badge-warning {
-    @apply bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400;
+    background: var(--color-status-warning-bg);
+    color: var(--color-status-warning);
+    @apply dark:bg-amber-500/20 dark:text-amber-200;
   }
 
   .badge-danger {
-    @apply bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400;
+    background: var(--color-status-danger-bg);
+    color: var(--color-status-danger);
+    @apply dark:bg-red-500/20 dark:text-red-200;
   }
 
   .badge-gray {
-    @apply bg-gray-100 text-gray-700 dark:bg-dark-700 dark:text-dark-300;
+    background: var(--color-status-info-bg);
+    color: var(--color-status-info);
+    @apply dark:bg-dark-700 dark:text-dark-300;
   }
 
   .badge-purple {
-    @apply bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400;
+    background: #f1efff;
+    color: var(--color-link-accent);
+    @apply dark:bg-violet-500/20 dark:text-violet-200;
   }
 
   /* ============ 下拉菜单 ============ */
   .dropdown {
     @apply absolute z-50;
     @apply bg-white dark:bg-dark-800;
-    @apply rounded-xl;
-    @apply border border-gray-200 dark:border-dark-700;
+    @apply rounded-lg;
+    border-color: var(--color-border-soft);
+    @apply border dark:border-dark-700;
     @apply shadow-lg;
     @apply py-1;
     @apply origin-top-right animate-scale-in;
@@ -369,7 +465,7 @@
   .dropdown-item {
     @apply px-4 py-2 text-sm;
     @apply text-gray-700 dark:text-gray-300;
-    @apply hover:bg-gray-100 dark:hover:bg-dark-700;
+    @apply hover:bg-primary-50 dark:hover:bg-dark-700;
     @apply cursor-pointer transition-colors;
     @apply flex items-center gap-2;
   }
@@ -385,8 +481,9 @@
     @apply w-full;
     @apply max-h-[95vh] sm:max-h-[90vh];
     @apply bg-white dark:bg-dark-800;
-    @apply rounded-2xl shadow-2xl;
-    @apply border border-gray-200 dark:border-dark-700;
+    @apply rounded-lg shadow-xl;
+    border-color: var(--color-border-soft);
+    @apply border dark:border-dark-700;
     @apply flex flex-col;
   }
 
@@ -477,7 +574,7 @@
   .dialog-container {
     @apply flex w-full flex-col;
     @apply max-h-[90vh];
-    @apply rounded-2xl bg-white dark:bg-dark-800;
+    @apply rounded-lg bg-white dark:bg-dark-800;
     @apply shadow-xl;
   }
 
@@ -492,7 +589,8 @@
 
   .dialog-footer {
     @apply border-t border-gray-100 px-6 py-4 dark:border-dark-700;
-    @apply bg-gray-50/60 dark:bg-dark-900/40;
+    background: rgba(255, 250, 247, 0.76);
+    @apply dark:bg-dark-900/40;
     @apply flex items-center justify-end gap-3;
   }
 
@@ -501,7 +599,7 @@
     @apply fixed right-4 top-4 z-[100];
     @apply min-w-[320px] max-w-md;
     @apply bg-white dark:bg-dark-800;
-    @apply rounded-xl shadow-lg;
+    @apply rounded-lg shadow-lg;
     @apply border-l-4;
     @apply p-4;
     @apply animate-slide-in-right;
@@ -526,50 +624,63 @@
   /* ============ 侧边栏 ============ */
   .sidebar {
     @apply fixed inset-y-0 left-0 z-40;
-    @apply w-64 bg-white dark:bg-dark-900;
-    @apply border-r border-gray-200 dark:border-dark-800;
+    background: var(--color-sidebar);
+    @apply dark:bg-dark-950;
+    border-color: var(--color-border-soft);
+    @apply border-r dark:border-dark-800;
     @apply flex flex-col;
     @apply transition-transform duration-300;
     transition-property: width, transform;
   }
 
   .sidebar-header {
-    @apply h-16 px-6;
+    @apply h-16 px-3.5;
     @apply flex items-center gap-3;
-    @apply border-b border-gray-100 dark:border-dark-800;
+    border-color: var(--color-border-mint);
+    @apply border-b dark:border-dark-800;
     transition:
       padding 0.2s ease,
       gap 0.2s ease;
   }
 
   .sidebar-nav {
-    @apply flex-1 overflow-y-auto px-3 py-4;
+    @apply flex-1 overflow-y-auto px-2 py-2;
   }
 
   .sidebar-link {
+    @apply relative;
     @apply flex items-center gap-3 rounded-xl py-2.5;
-    @apply overflow-hidden;
-    @apply text-sm font-medium;
-    @apply text-gray-600 dark:text-dark-300;
+    @apply overflow-visible;
+    @apply text-[0.95rem] font-medium;
+    @apply text-[#1f1f1f] dark:text-dark-300;
     @apply transition-all duration-200;
-    @apply hover:bg-gray-100 dark:hover:bg-dark-800;
-    @apply hover:text-gray-900 dark:hover:text-white;
-    padding-left: 1.0625rem;
-    padding-right: 0.875rem;
+    @apply hover:bg-primary-50 dark:hover:bg-dark-800;
+    @apply hover:text-[#111111] dark:hover:text-white;
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
   }
 
   .sidebar-link-active {
-    @apply bg-primary-50 dark:bg-primary-900/20;
-    @apply text-primary-600 dark:text-primary-400;
-    @apply hover:bg-primary-100 dark:hover:bg-primary-900/30;
+    background: var(--color-mint-active);
+    @apply text-[#111111] dark:bg-dark-900 dark:text-white;
+    @apply hover:bg-primary-100 dark:hover:bg-dark-900;
+  }
+
+  .sidebar-link-active::before {
+    content: '';
+    @apply absolute right-[-0.5rem] top-1/2 h-8 w-1 -translate-y-1/2 rounded-full bg-primary-600;
+  }
+
+  .sidebar-link-collapsed.sidebar-link-active::before {
+    display: none;
   }
 
   .sidebar-section {
-    @apply mb-6;
+    @apply mb-5;
   }
 
   .sidebar-section-title {
-    @apply mb-2 px-3;
+    @apply mb-3 px-5;
     @apply text-xs font-semibold uppercase tracking-wider;
     @apply text-gray-400 dark:text-dark-500;
   }
@@ -580,7 +691,7 @@
   }
 
   .page-title {
-    @apply text-2xl font-bold text-gray-900 dark:text-white;
+    @apply text-4xl font-semibold text-[#151515] dark:text-white;
   }
 
   .page-description {
@@ -624,7 +735,7 @@
   /* ============ 标签页 ============ */
   .tabs {
     @apply flex gap-1 p-1;
-    @apply rounded-xl bg-gray-100 dark:bg-dark-800;
+    @apply rounded-lg bg-primary-50 dark:bg-dark-800;
   }
 
   .tab {
@@ -638,6 +749,7 @@
     @apply bg-white dark:bg-dark-700;
     @apply text-gray-900 dark:text-white;
     @apply shadow-sm;
+    color: var(--color-ai-accent);
   }
 
   /* ============ 进度条 ============ */
@@ -646,7 +758,7 @@
   }
 
   .progress-bar {
-    @apply h-full bg-gradient-to-r from-primary-500 to-primary-400;
+    @apply h-full bg-primary-500;
     @apply transition-all duration-300;
   }
 
@@ -682,7 +794,7 @@
   .code-block {
     @apply font-mono text-sm;
     @apply bg-gray-900 text-gray-100;
-    @apply overflow-x-auto rounded-xl p-4;
+    @apply overflow-x-auto rounded-lg p-4;
   }
 
   /* ============ Tour Description ============ */
@@ -737,7 +849,7 @@
 @layer utilities {
   /* 文字渐变 */
   .text-gradient {
-    @apply bg-gradient-to-r from-primary-500 to-accent-500 bg-clip-text text-transparent;
+    @apply text-slate-950 dark:text-white;
   }
 
   /* 玻璃效果 */

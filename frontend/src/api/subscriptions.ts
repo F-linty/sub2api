@@ -12,7 +12,7 @@ import type { UserSubscription, SubscriptionProgress } from '@/types'
 export interface SubscriptionSummary {
   active_count: number
   subscriptions: Array<{
-    id: number
+    id: string | number
     group_name: string
     status: string
     daily_progress: number | null

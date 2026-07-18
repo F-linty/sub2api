@@ -172,7 +172,7 @@ const emit = defineEmits<Emits>()
 const { t } = useI18n()
 const { copyToClipboard: clipboardCopy } = useClipboard()
 
-const copiedIndex = ref<number | null>(null)
+const copiedIndex = ref<string | number | null>(null)
 const activeTab = ref<string>('unix')
 const activeClientTab = ref<string>('claude')
 

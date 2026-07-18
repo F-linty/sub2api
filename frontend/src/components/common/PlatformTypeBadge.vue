@@ -155,39 +155,39 @@ const planIconName = computed<'bolt' | null>(() => {
 
 const platformClass = computed(() => {
   if (props.platform === 'anthropic') {
-    return 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400'
+    return 'bg-[#f3f1ee] text-[#5f5b57] dark:bg-zinc-800 dark:text-zinc-300'
   }
   if (props.platform === 'openai') {
-    return 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
+    return 'bg-[#eaf7f1] text-[#0f8f6a] dark:bg-emerald-500/20 dark:text-emerald-200'
   }
   if (props.platform === 'antigravity') {
-    return 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400'
+    return 'bg-[#f1efff] text-[#6b5ce7] dark:bg-violet-500/20 dark:text-violet-200'
   }
   if (props.platform === 'grok') {
-    return 'bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300'
+    return 'bg-[#f3f1ee] text-[#5f5b57] dark:bg-zinc-800 dark:text-zinc-300'
   }
-  return 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
+  return 'bg-[#f3f1ee] text-[#5f5b57] dark:bg-zinc-800 dark:text-zinc-300'
 })
 
 const typeClass = computed(() => {
   if (props.platform === 'anthropic') {
-    return 'bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400'
+    return 'bg-[#f3f1ee] text-[#5f5b57] dark:bg-zinc-800 dark:text-zinc-300'
   }
   if (props.platform === 'openai') {
-    return 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400'
+    return 'bg-[#eaf7f1] text-[#0f8f6a] dark:bg-emerald-500/20 dark:text-emerald-200'
   }
   if (props.platform === 'antigravity') {
-    return 'bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400'
+    return 'bg-[#f1efff] text-[#6b5ce7] dark:bg-violet-500/20 dark:text-violet-200'
   }
   if (props.platform === 'grok') {
-    return 'bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300'
+    return 'bg-[#f3f1ee] text-[#5f5b57] dark:bg-zinc-800 dark:text-zinc-300'
   }
-  return 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400'
+  return 'bg-[#f3f1ee] text-[#5f5b57] dark:bg-zinc-800 dark:text-zinc-300'
 })
 
 const planBadgeClass = computed(() => {
   if (normalizedPlanType.value === 'abnormal') {
-    return 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400'
+    return 'bg-[#fbe7df] text-[#873628] dark:bg-red-500/20 dark:text-red-200'
   }
   return typeClass.value
 })
@@ -219,16 +219,16 @@ const privacyBadge = computed(() => {
   switch (props.privacyMode) {
     // OpenAI states
     case 'training_off':
-      return { label: 'Private', icon: shieldCheck, title: t('admin.accounts.privacyTrainingOff'), class: 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400' }
+      return { label: 'Private', icon: shieldCheck, title: t('admin.accounts.privacyTrainingOff'), class: 'bg-[#eaf7f1] text-[#0f8f6a] dark:bg-emerald-500/20 dark:text-emerald-200' }
     case 'training_set_cf_blocked':
-      return { label: 'CF', icon: shieldX, title: t('admin.accounts.privacyCfBlocked'), class: 'bg-yellow-100 text-yellow-600 dark:bg-yellow-900/30 dark:text-yellow-400' }
+      return { label: 'CF', icon: shieldX, title: t('admin.accounts.privacyCfBlocked'), class: 'bg-[#fff4dc] text-[#8a5a00] dark:bg-amber-500/20 dark:text-amber-200' }
     case 'training_set_failed':
-      return { label: 'Fail', icon: shieldX, title: t('admin.accounts.privacyFailed'), class: 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400' }
+      return { label: 'Fail', icon: shieldX, title: t('admin.accounts.privacyFailed'), class: 'bg-[#fbe7df] text-[#873628] dark:bg-red-500/20 dark:text-red-200' }
     // Antigravity states
     case 'privacy_set':
-      return { label: 'Private', icon: shieldCheck, title: t('admin.accounts.privacyAntigravitySet'), class: 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400' }
+      return { label: 'Private', icon: shieldCheck, title: t('admin.accounts.privacyAntigravitySet'), class: 'bg-[#eaf7f1] text-[#0f8f6a] dark:bg-emerald-500/20 dark:text-emerald-200' }
     case 'privacy_set_failed':
-      return { label: 'Fail', icon: shieldX, title: t('admin.accounts.privacyAntigravityFailed'), class: 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400' }
+      return { label: 'Fail', icon: shieldX, title: t('admin.accounts.privacyAntigravityFailed'), class: 'bg-[#fbe7df] text-[#873628] dark:bg-red-500/20 dark:text-red-200' }
     default:
       return null
   }

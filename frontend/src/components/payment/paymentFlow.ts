@@ -31,7 +31,7 @@ export type PaymentLaunchKind =
   | 'unhandled'
 
 export interface PaymentRecoverySnapshot {
-  orderId: number
+  orderId: string | number
   amount: number
   qrCode: string
   expiresAt: string
@@ -76,7 +76,7 @@ export interface BuildCreateOrderPayloadInput {
   amount: number
   paymentType: string
   orderType: OrderType
-  planId?: number
+  planId?: string | number
   origin?: string
   isMobile: boolean
   isWechatBrowser: boolean

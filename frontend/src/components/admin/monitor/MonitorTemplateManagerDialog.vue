@@ -292,7 +292,7 @@ const countByProvider = computed<Record<Provider, number>>(() => {
 
 // --- form state ---
 interface TemplateForm {
-  id: number | null
+  id: string | number | null
   name: string
   provider: Provider
   api_mode: APIMode
@@ -302,7 +302,7 @@ interface TemplateForm {
   body_override: Record<string, unknown> | null
 }
 
-const editing = ref<null | 'new' | number>(null) // null = list view; 'new' = create; <id> = edit
+const editing = ref<null | 'new' | string | number>(null) // null = list view; 'new' = create; <id> = edit
 const submitting = ref(false)
 const form = reactive<TemplateForm>(emptyForm(PROVIDER_ANTHROPIC))
 

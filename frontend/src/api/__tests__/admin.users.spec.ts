@@ -38,7 +38,7 @@ type ExpectedAdminBindAuthIdentityRequest = {
 }
 
 type ExpectedAdminBoundAuthIdentity = {
-  user_id: number
+  user_id: string | number
   provider_type: string
   provider_key: string
   provider_subject: string

@@ -40,7 +40,7 @@ import { useI18n } from 'vue-i18n'
 const { t } = useI18n()
 
 defineProps<{
-  users: { user_id: number; email: string; amount: number }[]
+  users: { user_id: string | number; email: string; amount: number }[]
 }>()
 
 function rankClass(idx: number): string {

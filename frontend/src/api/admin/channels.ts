@@ -9,7 +9,7 @@ import type { BillingMode, ChannelStatus, BillingModelSource } from '@/constants
 export type { BillingMode } from '@/constants/channel'
 
 export interface PricingInterval {
-  id?: number
+  id?: string | number
   min_tokens: number
   max_tokens: number | null
   tier_label: string
@@ -22,7 +22,7 @@ export interface PricingInterval {
 }
 
 export interface ChannelModelPricing {
-  id?: number
+  id?: string | number
   platform: string
   models: string[]
   billing_mode: BillingMode
@@ -36,22 +36,22 @@ export interface ChannelModelPricing {
 }
 
 export interface AccountStatsPricingRule {
-  id?: number
+  id?: string | number
   name: string
-  group_ids: number[]
-  account_ids: number[]
+  group_ids: (string | number)[]
+  account_ids: string[]
   pricing: ChannelModelPricing[]
 }
 
 export interface Channel {
-  id: number
+  id: string | number
   name: string
   description: string
   status: ChannelStatus
   billing_model_source: BillingModelSource
   restrict_models: boolean
   features_config?: Record<string, unknown>
-  group_ids: number[]
+  group_ids: (string | number)[]
   model_pricing: ChannelModelPricing[]
   model_mapping: Record<string, Record<string, string>> // platform → {src→dst}
   apply_pricing_to_account_stats: boolean
@@ -63,7 +63,7 @@ export interface Channel {
 export interface CreateChannelRequest {
   name: string
   description?: string
-  group_ids?: number[]
+  group_ids?: (string | number)[]
   model_pricing?: ChannelModelPricing[]
   model_mapping?: Record<string, Record<string, string>>
   billing_model_source?: string
@@ -77,7 +77,7 @@ export interface UpdateChannelRequest {
   name?: string
   description?: string
   status?: string
-  group_ids?: number[]
+  group_ids?: (string | number)[]
   model_pricing?: ChannelModelPricing[]
   model_mapping?: Record<string, Record<string, string>>
   billing_model_source?: string
@@ -120,7 +120,7 @@ export async function list(
 /**
  * Get channel by ID
  */
-export async function getById(id: number): Promise<Channel> {
+export async function getById(id: string | number): Promise<Channel> {
   const { data } = await apiClient.get<Channel>(`/admin/channels/${id}`)
   return data
 }
@@ -136,7 +136,7 @@ export async function create(req: CreateChannelRequest): Promise<Channel> {
 /**
  * Update a channel
  */
-export async function update(id: number, req: UpdateChannelRequest): Promise<Channel> {
+export async function update(id: string | number, req: UpdateChannelRequest): Promise<Channel> {
   const { data } = await apiClient.put<Channel>(`/admin/channels/${id}`, req)
   return data
 }
@@ -144,7 +144,7 @@ export async function update(id: number, req: UpdateChannelRequest): Promise<Cha
 /**
  * Delete a channel
  */
-export async function remove(id: number): Promise<void> {
+export async function remove(id: string | number): Promise<void> {
   await apiClient.delete(`/admin/channels/${id}`)
 }
 

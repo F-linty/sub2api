@@ -86,7 +86,7 @@ const props = withDefaults(defineProps<{
   loading: boolean
   keys: ApiKey[]
   provider: Provider
-  userGroupRates?: Record<number, number>
+  userGroupRates?: Record<string | number, number>
 }>(), {
   userGroupRates: () => ({}),
 })

@@ -117,7 +117,7 @@ const emit = defineEmits<{
   delete: [provider: ProviderInstance]
   toggleField: [provider: ProviderInstance, field: 'enabled' | 'refund_enabled' | 'allow_user_refund']
   toggleType: [provider: ProviderInstance, type: string]
-  reorder: [providers: { id: number; sort_order: number }[]]
+  reorder: [providers: { id: string | number; sort_order: number }[]]
 }>()
 
 const { t } = useI18n()

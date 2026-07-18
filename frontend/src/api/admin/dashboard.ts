@@ -48,11 +48,11 @@ export interface TrendParams {
   start_date?: string
   end_date?: string
   granularity?: 'day' | 'hour'
-  user_id?: number
-  api_key_id?: number
+  user_id?: string | number
+  api_key_id?: string | number
   model?: string
-  account_id?: number
-  group_id?: number
+  account_id?: string | number
+  group_id?: string | number
   request_type?: UsageRequestType
   stream?: boolean
   billing_type?: number | null
@@ -78,12 +78,12 @@ export async function getUsageTrend(params?: TrendParams): Promise<TrendResponse
 export interface ModelStatsParams {
   start_date?: string
   end_date?: string
-  user_id?: number
-  api_key_id?: number
+  user_id?: string | number
+  api_key_id?: string | number
   model?: string
   model_source?: 'requested' | 'upstream' | 'mapping'
-  account_id?: number
-  group_id?: number
+  account_id?: string | number
+  group_id?: string | number
   request_type?: UsageRequestType
   stream?: boolean
   billing_type?: number | null
@@ -108,10 +108,10 @@ export async function getModelStats(params?: ModelStatsParams): Promise<ModelSta
 export interface GroupStatsParams {
   start_date?: string
   end_date?: string
-  user_id?: number
-  api_key_id?: number
-  account_id?: number
-  group_id?: number
+  user_id?: string | number
+  api_key_id?: string | number
+  account_id?: string | number
+  group_id?: string | number
   request_type?: UsageRequestType
   stream?: boolean
   billing_type?: number | null
@@ -161,7 +161,7 @@ export async function getGroupStats(params?: GroupStatsParams): Promise<GroupSta
 export interface UserBreakdownParams {
   start_date?: string
   end_date?: string
-  group_id?: number
+  group_id?: string | number
   model?: string
   model_source?: 'requested' | 'upstream' | 'mapping'
   endpoint?: string
@@ -170,9 +170,9 @@ export interface UserBreakdownParams {
   // Sort column for the ranking (allowlisted server-side; falls back to actual_cost)
   sort_by?: 'total_tokens' | 'input_tokens' | 'output_tokens' | 'cache_tokens' | 'requests' | 'cost' | 'actual_cost'
   // Additional filter conditions
-  user_id?: number
-  api_key_id?: number
-  account_id?: number
+  user_id?: string | number
+  api_key_id?: string | number
+  account_id?: string | number
   request_type?: UsageRequestType
   stream?: boolean
   billing_type?: number | null
@@ -275,7 +275,7 @@ export interface PlatformUsage {
 }
 
 export interface BatchUserUsageStats {
-  user_id: number
+  user_id: string | number
   today_actual_cost: number
   total_actual_cost: number
   by_platform?: PlatformUsage[]
@@ -290,7 +290,7 @@ export interface BatchUsersUsageResponse {
  * @param userIds - Array of user IDs
  * @returns Usage stats map keyed by user ID
  */
-export async function getBatchUsersUsage(userIds: number[]): Promise<BatchUsersUsageResponse> {
+export async function getBatchUsersUsage(userIds: (string | number)[]): Promise<BatchUsersUsageResponse> {
   const { data } = await apiClient.post<BatchUsersUsageResponse>('/admin/dashboard/users-usage', {
     user_ids: userIds
   })
@@ -298,7 +298,7 @@ export async function getBatchUsersUsage(userIds: number[]): Promise<BatchUsersU
 }
 
 export interface BatchApiKeyUsageStats {
-  api_key_id: number
+  api_key_id: string | number
   today_actual_cost: number
   total_actual_cost: number
 }
@@ -313,7 +313,7 @@ export interface BatchApiKeysUsageResponse {
  * @returns Usage stats map keyed by API key ID
  */
 export async function getBatchApiKeysUsage(
-  apiKeyIds: number[]
+  apiKeyIds: (string | number)[]
 ): Promise<BatchApiKeysUsageResponse> {
   const { data } = await apiClient.post<BatchApiKeysUsageResponse>(
     '/admin/dashboard/api-keys-usage',

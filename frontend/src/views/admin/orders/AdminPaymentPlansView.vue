@@ -113,15 +113,15 @@ async function loadPaymentConfig() {
   } catch { /* preview only */ }
 }
 
-function getGroup(id: number): AdminGroup | undefined {
-  return groups.value.find(g => g.id === id)
+function getGroup(id: string | number): AdminGroup | undefined {
+  return groups.value.find(g => String(g.id) === String(id))
 }
 
-function isGroupMissing(id: number): boolean {
-  return id > 0 && !groups.value.find(g => g.id === id)
+function isGroupMissing(id: string | number): boolean {
+  return String(id).trim() !== '' && String(id) !== '0' && !groups.value.find(g => String(g.id) === String(id))
 }
 
-function getPlanNameClass(groupId: number): string {
+function getPlanNameClass(groupId: string | number): string {
   const group = getGroup(groupId)
   return group ? platformTextClass(group.platform) : 'text-gray-900 dark:text-white'
 }
@@ -134,7 +134,7 @@ const plans = ref<SubscriptionPlan[]>([])
 const showPlanDialog = ref(false)
 const showDeletePlanDialog = ref(false)
 const editingPlan = ref<SubscriptionPlan | null>(null)
-const deletingPlanId = ref<number | null>(null)
+const deletingPlanId = ref<string | number | null>(null)
 
 const planColumns = computed((): Column[] => [
   { key: 'id', label: 'ID' },

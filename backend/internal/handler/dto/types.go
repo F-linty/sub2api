@@ -9,7 +9,7 @@ import (
 )
 
 type User struct {
-	ID            int64      `json:"id"`
+	ID            int64      `json:"id,string"`
 	Email         string     `json:"email"`
 	Username      string     `json:"username"`
 	Role          string     `json:"role"`
@@ -17,7 +17,7 @@ type User struct {
 	FrozenBalance float64    `json:"frozen_balance"`
 	Concurrency   int        `json:"concurrency"`
 	Status        string     `json:"status"`
-	AllowedGroups []int64    `json:"allowed_groups"`
+	AllowedGroups []string   `json:"allowed_groups"`
 	LastActiveAt  *time.Time `json:"last_active_at,omitempty"`
 	CreatedAt     time.Time  `json:"created_at"`
 	UpdatedAt     time.Time  `json:"updated_at"`
@@ -50,11 +50,11 @@ type AdminUser struct {
 }
 
 type APIKey struct {
-	ID          int64      `json:"id"`
-	UserID      int64      `json:"user_id"`
+	ID          int64      `json:"id,string"`
+	UserID      int64      `json:"user_id,string"`
 	Key         string     `json:"key"`
 	Name        string     `json:"name"`
-	GroupID     *int64     `json:"group_id"`
+	GroupID     *int64     `json:"group_id,string"`
 	Status      string     `json:"status"`
 	IPWhitelist []string   `json:"ip_whitelist"`
 	IPBlacklist []string   `json:"ip_blacklist"`
@@ -87,7 +87,7 @@ type APIKey struct {
 }
 
 type Group struct {
-	ID             int64   `json:"id"`
+	ID             int64   `json:"id,string"`
 	Name           string  `json:"name"`
 	Description    string  `json:"description"`
 	Platform       string  `json:"platform"`
@@ -125,9 +125,9 @@ type Group struct {
 
 	// Claude Code 客户端限制
 	ClaudeCodeOnly  bool   `json:"claude_code_only"`
-	FallbackGroupID *int64 `json:"fallback_group_id"`
+	FallbackGroupID *int64 `json:"fallback_group_id,string"`
 	// 无效请求兜底分组
-	FallbackGroupIDOnInvalidRequest *int64 `json:"fallback_group_id_on_invalid_request"`
+	FallbackGroupIDOnInvalidRequest *int64 `json:"fallback_group_id_on_invalid_request,string"`
 
 	// OpenAI Messages 调度开关（用户侧需要此字段判断是否展示 Claude Code 教程）
 	AllowMessagesDispatch bool `json:"allow_messages_dispatch"`
@@ -149,8 +149,8 @@ type AdminGroup struct {
 	Group
 
 	// 模型路由配置（仅 anthropic 平台使用）
-	ModelRouting        map[string][]int64 `json:"model_routing"`
-	ModelRoutingEnabled bool               `json:"model_routing_enabled"`
+	ModelRouting        map[string][]string `json:"model_routing"`
+	ModelRoutingEnabled bool                `json:"model_routing_enabled"`
 
 	// MCP XML 协议注入（仅 antigravity 平台使用）
 	MCPXMLInject bool `json:"mcp_xml_inject"`
@@ -172,7 +172,7 @@ type AdminGroup struct {
 }
 
 type Account struct {
-	ID       int64   `json:"id"`
+	ID       int64   `json:"id,string"`
 	Name     string  `json:"name"`
 	Notes    *string `json:"notes"`
 	Platform string  `json:"platform"`
@@ -182,8 +182,8 @@ type Account struct {
 	Credentials             map[string]any  `json:"credentials"`
 	CredentialsStatus       map[string]bool `json:"credentials_status,omitempty"`
 	Extra                   map[string]any  `json:"extra"`
-	ProxyID                 *int64          `json:"proxy_id"`
-	ProxyFallbackOriginID   *int64          `json:"proxy_fallback_origin_id"`
+	ProxyID                 *int64          `json:"proxy_id,string"`
+	ProxyFallbackOriginID   *int64          `json:"proxy_fallback_origin_id,string"`
 	ProxyFallbackOriginName *string         `json:"proxy_fallback_origin_name,omitempty"`
 	Concurrency             int             `json:"concurrency"`
 	LoadFactor              *int            `json:"load_factor,omitempty"`
@@ -230,7 +230,7 @@ type Account struct {
 	// TLS指纹伪装（仅 Anthropic OAuth/SetupToken 账号有效）
 	// 从 extra 字段提取，方便前端显示和编辑
 	EnableTLSFingerprint    *bool  `json:"enable_tls_fingerprint,omitempty"`
-	TLSFingerprintProfileID *int64 `json:"tls_fingerprint_profile_id,omitempty"`
+	TLSFingerprintProfileID *int64 `json:"tls_fingerprint_profile_id,string,omitempty"`
 
 	// 会话ID伪装（仅 Anthropic OAuth/SetupToken 账号有效）
 	// 启用后将在15分钟内固定 metadata.user_id 中的 session ID
@@ -286,13 +286,13 @@ type Account struct {
 	Proxy         *Proxy         `json:"proxy,omitempty"`
 	AccountGroups []AccountGroup `json:"account_groups,omitempty"`
 
-	GroupIDs []int64  `json:"group_ids,omitempty"`
+	GroupIDs []string `json:"group_ids,omitempty"`
 	Groups   []*Group `json:"groups,omitempty"`
 }
 
 type AccountGroup struct {
-	AccountID int64     `json:"account_id"`
-	GroupID   int64     `json:"group_id"`
+	AccountID int64     `json:"account_id,string"`
+	GroupID   int64     `json:"group_id,string"`
 	Priority  int       `json:"priority"`
 	CreatedAt time.Time `json:"created_at"`
 
@@ -301,7 +301,7 @@ type AccountGroup struct {
 }
 
 type Proxy struct {
-	ID        int64     `json:"id"`
+	ID        int64     `json:"id,string"`
 	Name      string    `json:"name"`
 	Protocol  string    `json:"protocol"`
 	Host      string    `json:"host"`
@@ -314,7 +314,7 @@ type Proxy struct {
 
 	ExpiresAt      *time.Time `json:"expires_at"`
 	FallbackMode   string     `json:"fallback_mode"`
-	BackupProxyID  *int64     `json:"backup_proxy_id"`
+	BackupProxyID  *int64     `json:"backup_proxy_id,string"`
 	ExpiryWarnDays int        `json:"expiry_warn_days"`
 }
 
@@ -363,7 +363,7 @@ type AdminProxyWithAccountCount struct {
 }
 
 type ProxyAccountSummary struct {
-	ID       int64   `json:"id"`
+	ID       int64   `json:"id,string"`
 	Name     string  `json:"name"`
 	Platform string  `json:"platform"`
 	Type     string  `json:"type"`
@@ -371,17 +371,17 @@ type ProxyAccountSummary struct {
 }
 
 type RedeemCode struct {
-	ID        int64      `json:"id"`
+	ID        int64      `json:"id,string"`
 	Code      string     `json:"code"`
 	Type      string     `json:"type"`
 	Value     float64    `json:"value"`
 	Status    string     `json:"status"`
-	UsedBy    *int64     `json:"used_by"`
+	UsedBy    *int64     `json:"used_by,string"`
 	UsedAt    *time.Time `json:"used_at"`
 	CreatedAt time.Time  `json:"created_at"`
 	ExpiresAt *time.Time `json:"expires_at,omitempty"`
 
-	GroupID      *int64 `json:"group_id"`
+	GroupID      *int64 `json:"group_id,string"`
 	ValidityDays int    `json:"validity_days"`
 
 	// Notes is only populated for admin_balance/admin_concurrency types
@@ -455,10 +455,10 @@ type BatchUpdateRedeemCodesRequest struct {
 
 // UsageLog 是普通用户接口使用的 usage log DTO（不包含管理员字段）。
 type UsageLog struct {
-	ID        int64  `json:"id"`
-	UserID    int64  `json:"user_id"`
-	APIKeyID  int64  `json:"api_key_id"`
-	AccountID int64  `json:"account_id"`
+	ID        int64  `json:"id,string"`
+	UserID    int64  `json:"user_id,string"`
+	APIKeyID  int64  `json:"api_key_id,string"`
+	AccountID int64  `json:"account_id,string"`
 	RequestID string `json:"request_id"`
 	Model     string `json:"model"`
 	// ServiceTier records the OpenAI service tier used for billing, e.g. "priority" / "flex".
@@ -471,8 +471,8 @@ type UsageLog struct {
 	// UpstreamEndpoint is the normalized upstream endpoint path, e.g. /v1/responses.
 	UpstreamEndpoint *string `json:"upstream_endpoint,omitempty"`
 
-	GroupID        *int64 `json:"group_id"`
-	SubscriptionID *int64 `json:"subscription_id"`
+	GroupID        *int64 `json:"group_id,string"`
+	SubscriptionID *int64 `json:"subscription_id,string"`
 
 	InputTokens         int `json:"input_tokens"`
 	OutputTokens        int `json:"output_tokens"`
@@ -537,7 +537,7 @@ type AdminUsageLog struct {
 	UpstreamModel *string `json:"upstream_model,omitempty"`
 
 	// ChannelID 渠道 ID
-	ChannelID *int64 `json:"channel_id,omitempty"`
+	ChannelID *int64 `json:"channel_id,string,omitempty"`
 	// ModelMappingChain 模型映射链，如 "a→b→c"
 	ModelMappingChain *string `json:"model_mapping_chain,omitempty"`
 	// BillingTier 计费层级标签（per_request/image 模式）
@@ -558,10 +558,10 @@ type AdminUsageLog struct {
 type UsageCleanupFilters struct {
 	StartTime   time.Time `json:"start_time"`
 	EndTime     time.Time `json:"end_time"`
-	UserID      *int64    `json:"user_id,omitempty"`
-	APIKeyID    *int64    `json:"api_key_id,omitempty"`
-	AccountID   *int64    `json:"account_id,omitempty"`
-	GroupID     *int64    `json:"group_id,omitempty"`
+	UserID      *int64    `json:"user_id,string,omitempty"`
+	APIKeyID    *int64    `json:"api_key_id,string,omitempty"`
+	AccountID   *int64    `json:"account_id,string,omitempty"`
+	GroupID     *int64    `json:"group_id,string,omitempty"`
 	Model       *string   `json:"model,omitempty"`
 	RequestType *string   `json:"request_type,omitempty"`
 	Stream      *bool     `json:"stream,omitempty"`
@@ -569,13 +569,13 @@ type UsageCleanupFilters struct {
 }
 
 type UsageCleanupTask struct {
-	ID           int64               `json:"id"`
+	ID           int64               `json:"id,string"`
 	Status       string              `json:"status"`
 	Filters      UsageCleanupFilters `json:"filters"`
-	CreatedBy    int64               `json:"created_by"`
+	CreatedBy    int64               `json:"created_by,string"`
 	DeletedRows  int64               `json:"deleted_rows"`
 	ErrorMessage *string             `json:"error_message,omitempty"`
-	CanceledBy   *int64              `json:"canceled_by,omitempty"`
+	CanceledBy   *int64              `json:"canceled_by,string,omitempty"`
 	CanceledAt   *time.Time          `json:"canceled_at,omitempty"`
 	StartedAt    *time.Time          `json:"started_at,omitempty"`
 	FinishedAt   *time.Time          `json:"finished_at,omitempty"`
@@ -586,21 +586,21 @@ type UsageCleanupTask struct {
 // AccountSummary is a minimal account info for usage log display.
 // It intentionally excludes sensitive fields like Credentials, Proxy, etc.
 type AccountSummary struct {
-	ID   int64  `json:"id"`
+	ID   int64  `json:"id,string"`
 	Name string `json:"name"`
 }
 
 type Setting struct {
-	ID        int64     `json:"id"`
+	ID        int64     `json:"id,string"`
 	Key       string    `json:"key"`
 	Value     string    `json:"value"`
 	UpdatedAt time.Time `json:"updated_at"`
 }
 
 type UserSubscription struct {
-	ID      int64 `json:"id"`
-	UserID  int64 `json:"user_id"`
-	GroupID int64 `json:"group_id"`
+	ID      int64 `json:"id,string"`
+	UserID  int64 `json:"user_id,string"`
+	GroupID int64 `json:"group_id,string"`
 
 	StartsAt  time.Time `json:"starts_at"`
 	ExpiresAt time.Time `json:"expires_at"`
@@ -627,7 +627,7 @@ type UserSubscription struct {
 type AdminUserSubscription struct {
 	UserSubscription
 
-	AssignedBy *int64    `json:"assigned_by"`
+	AssignedBy *int64    `json:"assigned_by,string"`
 	AssignedAt time.Time `json:"assigned_at"`
 	Notes      string    `json:"notes"`
 
@@ -646,7 +646,7 @@ type BulkAssignResult struct {
 
 // PromoCode 注册优惠码
 type PromoCode struct {
-	ID          int64      `json:"id"`
+	ID          int64      `json:"id,string"`
 	Code        string     `json:"code"`
 	BonusAmount float64    `json:"bonus_amount"`
 	MaxUses     int        `json:"max_uses"`
@@ -660,9 +660,9 @@ type PromoCode struct {
 
 // PromoCodeUsage 优惠码使用记录
 type PromoCodeUsage struct {
-	ID          int64     `json:"id"`
-	PromoCodeID int64     `json:"promo_code_id"`
-	UserID      int64     `json:"user_id"`
+	ID          int64     `json:"id,string"`
+	PromoCodeID int64     `json:"promo_code_id,string"`
+	UserID      int64     `json:"user_id,string"`
 	BonusAmount float64   `json:"bonus_amount"`
 	UsedAt      time.Time `json:"used_at"`
 
