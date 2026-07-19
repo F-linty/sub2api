@@ -416,6 +416,18 @@ const routes: RouteRecordRaw[] = [
     }
   },
   {
+    path: '/admin/rtk-compression',
+    name: 'AdminRTKCompression',
+    component: () => import('@/views/admin/RTKCompressionView.vue'),
+    meta: {
+      requiresAuth: true,
+      requiresAdmin: true,
+      title: 'RTK Compression',
+      titleKey: 'admin.rtkCompression.title',
+      descriptionKey: 'admin.rtkCompression.description'
+    }
+  },
+  {
     path: '/admin/users',
     name: 'AdminUsers',
     component: () => import('@/views/admin/UsersView.vue'),

@@ -15,6 +15,7 @@ import (
 	"github.com/Wei-Shaw/sub2api/internal/pkg/openai_compat"
 	"github.com/gin-gonic/gin"
 	"github.com/tidwall/gjson"
+	"go.uber.org/zap"
 )
 
 // Forward forwards request to OpenAI API
@@ -325,10 +326,66 @@ func (s *OpenAIGatewayService) Forward(ctx context.Context, c *gin.Context, acco
 		}
 	}
 
+	promptCacheRecorder := DefaultCodexPromptCacheRecorder()
+	if shouldAutoInjectPromptCacheKeyForCompat(upstreamModel) {
+		promptCacheEvent := CodexPromptCacheEvent{
+			AccountID:   account.ID,
+			Model:       upstreamModel,
+			AccountType: string(account.Type),
+			Compact:     isCompactRequest,
+		}
+		switch {
+		case account.Type != AccountTypeOAuth:
+			promptCacheEvent.Outcome = "skipped_non_oauth"
+		case isCompactRequest:
+			promptCacheEvent.Outcome = "skipped_compact"
+		case strings.TrimSpace(promptCacheKey) != "":
+			promptCacheEvent.Outcome = "already_present"
+			promptCacheEvent.Source = "body"
+			promptCacheEvent.KeyHash = hashSensitiveValueForLog(promptCacheKey)
+		default:
+			promptCacheEvent.Outcome = "pending"
+		}
+		if promptCacheEvent.Outcome != "pending" {
+			promptCacheRecorder.Record(promptCacheEvent)
+		}
+	}
+
 	if account.Type == AccountTypeOAuth {
 		decoded, decodeErr := ensureReqBody()
 		if decodeErr != nil {
 			return nil, decodeErr
+		}
+		autoPromptCache := codexPromptCacheResolution{}
+		if !isCompactRequest && strings.TrimSpace(promptCacheKey) == "" && shouldAutoInjectPromptCacheKeyForCompat(upstreamModel) {
+			autoPromptCache = resolveCodexOAuthPromptCacheKey(c, account, decoded, upstreamModel)
+			if autoPromptCache.Key != "" {
+				decoded["prompt_cache_key"] = autoPromptCache.Key
+				markDecodedModified()
+				promptCacheRecorder.Record(CodexPromptCacheEvent{
+					AccountID:   account.ID,
+					Model:       upstreamModel,
+					Outcome:     "injected",
+					Source:      autoPromptCache.Source,
+					KeyHash:     hashSensitiveValueForLog(autoPromptCache.Key),
+					AccountType: string(account.Type),
+					Compact:     isCompactRequest,
+				})
+				logger.L().Info("OpenAI Codex prompt cache key auto-injected",
+					zap.Int64("account_id", account.ID),
+					zap.String("model", upstreamModel),
+					zap.String("source", autoPromptCache.Source),
+					zap.String("prompt_cache_key_sha256", hashSensitiveValueForLog(autoPromptCache.Key)),
+				)
+			} else {
+				promptCacheRecorder.Record(CodexPromptCacheEvent{
+					AccountID:   account.ID,
+					Model:       upstreamModel,
+					Outcome:     "skipped_no_key",
+					AccountType: string(account.Type),
+					Compact:     isCompactRequest,
+				})
+			}
 		}
 		codexResult := codexTransformResult{}
 		if compatMessagesBridge {
@@ -390,7 +447,8 @@ func (s *OpenAIGatewayService) Forward(ctx context.Context, c *gin.Context, acco
 			}
 		}
 	}
-	if wsDecision.Transport != OpenAIUpstreamTransportResponsesWebsocketV2 && gjson.GetBytes(body, "previous_response_id").Exists() {
+	requestHadPreviousResponseID := gjson.GetBytes(body, "previous_response_id").Exists()
+	if wsDecision.Transport != OpenAIUpstreamTransportResponsesWebsocketV2 && requestHadPreviousResponseID {
 		markPatchDelete("previous_response_id")
 	}
 	if openAIRequestBodyMayContainEmptyBase64InputImage(body) {
@@ -450,6 +508,9 @@ func (s *OpenAIGatewayService) Forward(ctx context.Context, c *gin.Context, acco
 			}
 			requestView = newOpenAIRequestView(body)
 		}
+	}
+	if account.Type == AccountTypeOAuth && shouldAutoInjectPromptCacheKeyForCompat(upstreamModel) {
+		recordCodexChainDiagnostics(c, account, upstreamModel, body, isCompactRequest, wsDecision.Transport, requestHadPreviousResponseID)
 	}
 	imageBillingModel := ""
 	imageSizeTier := ""
@@ -694,6 +755,8 @@ func (s *OpenAIGatewayService) Forward(ctx context.Context, c *gin.Context, acco
 		s.writeOpenAIWSFallbackErrorResponse(c, account, wsErr)
 		return nil, wsErr
 	}
+
+	body = s.maybeApplyOpenAITokenSaver(c, account, body)
 
 	httpInvalidEncryptedContentRetryTried := false
 	for {

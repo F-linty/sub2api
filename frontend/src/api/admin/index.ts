@@ -33,6 +33,7 @@ import adminPaymentAPI from './payment'
 import affiliatesAPI from './affiliates'
 import riskControlAPI from './riskControl'
 import adminComplianceAPI from './compliance'
+import rtkCompressionAPI from './rtkCompression'
 
 /**
  * Unified admin API object for convenient access
@@ -67,7 +68,8 @@ export const adminAPI = {
   payment: adminPaymentAPI,
   affiliates: affiliatesAPI,
   riskControl: riskControlAPI,
-  compliance: adminComplianceAPI
+  compliance: adminComplianceAPI,
+  rtkCompression: rtkCompressionAPI
 }
 
 export {
@@ -100,7 +102,8 @@ export {
   adminPaymentAPI,
   affiliatesAPI,
   riskControlAPI,
-  adminComplianceAPI
+  adminComplianceAPI,
+  rtkCompressionAPI
 }
 
 export default adminAPI

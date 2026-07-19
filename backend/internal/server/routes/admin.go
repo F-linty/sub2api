@@ -71,6 +71,9 @@ func RegisterAdminRoutes(
 		// 运维监控（Ops）
 		registerOpsRoutes(admin, h)
 
+		// RTK 压缩观测
+		registerRTKCompressionRoutes(admin, h)
+
 		// 系统管理
 		registerSystemRoutes(admin, h)
 
@@ -106,6 +109,16 @@ func RegisterAdminRoutes(
 
 		// 邀请返利（专属用户管理）
 		registerAffiliateRoutes(admin, h)
+	}
+}
+
+func registerRTKCompressionRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
+	if h == nil || h.Admin == nil || h.Admin.RTKCompression == nil {
+		return
+	}
+	rtk := admin.Group("/rtk-compression")
+	{
+		rtk.GET("/snapshot", h.Admin.RTKCompression.GetSnapshot)
 	}
 }
 

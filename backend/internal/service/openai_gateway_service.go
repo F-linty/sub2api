@@ -406,6 +406,7 @@ type OpenAIGatewayService struct {
 	openaiWSRetryMetrics                openAIWSRetryMetrics
 	responseHeaderFilter                *responseheaders.CompiledHeaderFilter
 	codexSnapshotThrottle               *accountWriteThrottle
+	rtkCompressionRecorder              *RTKCompressionRecorder
 	codexModelsManifestCache            codexModelsManifestCache
 	openaiCompatSessionResponses        sync.Map
 	openaiCompatAnthropicDigestSessions sync.Map
@@ -457,19 +458,20 @@ func NewOpenAIGatewayService(
 			nil,
 			"service.openai_gateway",
 		),
-		httpUpstream:          httpUpstream,
-		deferredService:       deferredService,
-		openAITokenProvider:   openAITokenProvider,
-		grokTokenProvider:     grokTokenProvider,
-		toolCorrector:         NewCodexToolCorrector(),
-		openaiWSResolver:      NewOpenAIWSProtocolResolver(cfg),
-		resolver:              resolver,
-		channelService:        channelService,
-		balanceNotifyService:  balanceNotifyService,
-		settingService:        settingService,
-		userPlatformQuotaRepo: userPlatformQuotaRepo,
-		responseHeaderFilter:  compileResponseHeaderFilter(cfg),
-		codexSnapshotThrottle: newAccountWriteThrottle(openAICodexSnapshotPersistMinInterval),
+		httpUpstream:           httpUpstream,
+		deferredService:        deferredService,
+		openAITokenProvider:    openAITokenProvider,
+		grokTokenProvider:      grokTokenProvider,
+		toolCorrector:          NewCodexToolCorrector(),
+		openaiWSResolver:       NewOpenAIWSProtocolResolver(cfg),
+		resolver:               resolver,
+		channelService:         channelService,
+		balanceNotifyService:   balanceNotifyService,
+		settingService:         settingService,
+		userPlatformQuotaRepo:  userPlatformQuotaRepo,
+		responseHeaderFilter:   compileResponseHeaderFilter(cfg),
+		codexSnapshotThrottle:  newAccountWriteThrottle(openAICodexSnapshotPersistMinInterval),
+		rtkCompressionRecorder: DefaultRTKCompressionRecorder(),
 	}
 	if rateLimitService != nil {
 		rateLimitService.SetAccountRuntimeBlocker(svc)

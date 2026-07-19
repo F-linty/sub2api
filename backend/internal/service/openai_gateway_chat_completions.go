@@ -250,6 +250,8 @@ func (s *OpenAIGatewayService) ForwardAsChatCompletions(
 		return nil, fmt.Errorf("get access token: %w", err)
 	}
 
+	responsesBody = s.maybeApplyOpenAITokenSaver(c, account, responsesBody)
+
 	// 6. Build upstream request
 	upstreamCtx, releaseUpstreamCtx := detachUpstreamContext(ctx)
 	upstreamReq, err := s.buildUpstreamRequest(upstreamCtx, c, account, responsesBody, token, true, promptCacheKey, false)
