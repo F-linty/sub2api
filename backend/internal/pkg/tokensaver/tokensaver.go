@@ -260,7 +260,20 @@ func dedupeRepeatedToolOutputs(root any, opts Options) []Hit {
 
 func canonicalReferenceText(value string) string {
 	value = strings.ReplaceAll(value, "\r\n", "\n")
-	return strings.TrimRight(value, "\n")
+	value = strings.TrimRight(value, "\n")
+	if !strings.Contains(value, markerPrefix) {
+		return value
+	}
+	lines := splitLines(value)
+	for i, line := range lines {
+		switch {
+		case strings.HasPrefix(line, markerPrefix):
+			lines[i] = tokenSaverOriginalBytesRE.ReplaceAllString(line, "original <bytes> bytes")
+		case strings.HasPrefix(line, "Wall time:"):
+			lines[i] = "Wall time: <elapsed>"
+		}
+	}
+	return strings.Join(lines, "\n")
 }
 
 func shortContentHash(value string) string {
@@ -456,6 +469,7 @@ func compressGitDiff(text string) (string, bool) {
 
 var grepLineRE = regexp.MustCompile(`^(.+?):(\d+)(?::\d+)?:`)
 var buildSummaryRE = regexp.MustCompile(`^(added|removed|changed|audited|installed)\s+\d+\s+package`)
+var tokenSaverOriginalBytesRE = regexp.MustCompile(`original \d+ bytes`)
 
 func compressGrep(text string) (string, bool) {
 	lines := splitLines(text)

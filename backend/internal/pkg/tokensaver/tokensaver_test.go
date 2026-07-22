@@ -154,6 +154,26 @@ func TestCompressJSONCompressesThenReferencesDuplicateToolOutput(t *testing.T) {
 	}
 }
 
+func TestCompressJSONReferencesDuplicateShellOutputWithDifferentWallTime(t *testing.T) {
+	outputA := shellOutputWithWallTime(largeCompilingLog(), "0.5 seconds")
+	outputB := shellOutputWithWallTime(largeCompilingLog(), "1.2 seconds")
+	body := fmt.Sprintf(`{"messages":[{"role":"tool","content":%q},{"role":"tool","content":%q}]}`, outputA, outputB)
+
+	result, err := CompressJSON([]byte(body), Options{MinBytes: 64})
+	if err != nil {
+		t.Fatalf("CompressJSON returned error: %v", err)
+	}
+	if !result.Changed {
+		t.Fatalf("expected duplicated shell output body to be compressed and referenced")
+	}
+	if len(result.Hits) != 3 {
+		t.Fatalf("expected two compression hits plus one reference hit, got %#v", result.Hits)
+	}
+	if result.Hits[2].Filter != "duplicate_reference" || result.Hits[2].ReferencePath != "$.messages[0].content" {
+		t.Fatalf("unexpected reference hit: %#v", result.Hits[2])
+	}
+}
+
 func TestCompressJSONGitStatus(t *testing.T) {
 	body := fmt.Sprintf(`{"input":[{"type":"function_call_output","output":%q}]}`, largeGitStatus())
 
@@ -374,5 +394,9 @@ func largeSingleLineBlob() string {
 }
 
 func shellOutput(output string) string {
-	return "Exit code: 0\nWall time: 0.5 seconds\nOutput:\n" + output
+	return shellOutputWithWallTime(output, "0.5 seconds")
+}
+
+func shellOutputWithWallTime(output, wallTime string) string {
+	return "Exit code: 0\nWall time: " + wallTime + "\nOutput:\n" + output
 }
