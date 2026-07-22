@@ -1,11 +1,13 @@
 package service
 
 import (
+	"strconv"
 	"strings"
 
 	"github.com/Wei-Shaw/sub2api/internal/pkg/logger"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/tokensaver"
 	"github.com/gin-gonic/gin"
+	"github.com/tidwall/gjson"
 	"go.uber.org/zap"
 )
 
@@ -20,8 +22,9 @@ func (s *OpenAIGatewayService) maybeApplyOpenAITokenSaver(c *gin.Context, accoun
 	}
 
 	result, err := tokensaver.CompressJSON(body, tokensaver.Options{
-		MinBytes: s.cfg.Gateway.TokenSaver.MinBytes,
-		MaxBytes: s.cfg.Gateway.TokenSaver.MaxBytes,
+		MinBytes:       s.cfg.Gateway.TokenSaver.MinBytes,
+		MaxBytes:       s.cfg.Gateway.TokenSaver.MaxBytes,
+		ReferenceScope: openAITokenSaverReferenceScope(account, body),
 	})
 	if err != nil {
 		return body
@@ -55,6 +58,23 @@ func (s *OpenAIGatewayService) maybeApplyOpenAITokenSaver(c *gin.Context, accoun
 	}
 
 	return result.Body
+}
+
+func openAITokenSaverReferenceScope(account *Account, body []byte) string {
+	if account == nil || account.ID == 0 {
+		return ""
+	}
+	values := gjson.GetManyBytes(body, "model", "prompt_cache_key")
+	model := strings.TrimSpace(values[0].String())
+	promptCacheKey := strings.TrimSpace(values[1].String())
+	if promptCacheKey == "" {
+		return ""
+	}
+	return strings.Join([]string{
+		"account=" + strconv.FormatInt(account.ID, 10),
+		"model=" + normalizeCodexModel(model),
+		"prompt_cache_key=" + hashSensitiveValueForLog(promptCacheKey),
+	}, "|")
 }
 
 func isOpenAITokenSaverDisabledByHeader(value string) bool {

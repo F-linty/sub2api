@@ -9,19 +9,27 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+	"sync"
+	"time"
 )
 
 const (
-	defaultMinBytes   = 2048
-	defaultMaxBytes   = 512 << 10
-	markerPrefix      = "[sub2api token saver:"
-	referenceMinBytes = 768
+	defaultMinBytes            = 2048
+	defaultMaxBytes            = 512 << 10
+	markerPrefix               = "[sub2api token saver:"
+	referenceMinBytes          = 768
+	defaultReferenceKeepRecent = 2
+	repeatHistoryTTL           = 2 * time.Hour
+	repeatHistoryMaxScopes     = 256
+	repeatHistoryMaxPerScope   = 768
 )
 
 // Options controls conservative tool-output compression.
 type Options struct {
-	MinBytes int
-	MaxBytes int
+	MinBytes            int
+	MaxBytes            int
+	ReferenceScope      string
+	ReferenceKeepRecent int
 }
 
 // Hit describes one compressed JSON field.
@@ -68,6 +76,7 @@ func CompressJSON(body []byte, opts Options) (Result, error) {
 
 	hits, misses := mutateKnownToolOutputs(root, opts)
 	hits = append(hits, dedupeRepeatedToolOutputs(root, opts)...)
+	hits = append(hits, referenceRepeatedHistoryOutputs(root, opts)...)
 	result.Misses = misses
 	if len(hits) == 0 {
 		return result, nil
@@ -140,6 +149,39 @@ func mutateKnownToolOutputs(root any, opts Options) ([]Hit, []Miss) {
 	}
 
 	return hits, misses
+}
+
+type repeatHistoryEntry struct {
+	hash     string
+	path     string
+	lastSeen time.Time
+}
+
+type repeatHistoryScope struct {
+	lastSeen time.Time
+	entries  map[string]repeatHistoryEntry
+	order    []string
+}
+
+type repeatHistoryStore struct {
+	mu     sync.Mutex
+	scopes map[string]*repeatHistoryScope
+}
+
+var defaultRepeatHistoryStore = &repeatHistoryStore{scopes: make(map[string]*repeatHistoryScope)}
+
+type repeatHistoryCandidate struct {
+	field     toolStringField
+	value     string
+	canonical string
+	hash      string
+	key       string
+}
+
+func resetRepeatHistoryForTesting() {
+	defaultRepeatHistoryStore.mu.Lock()
+	defer defaultRepeatHistoryStore.mu.Unlock()
+	defaultRepeatHistoryStore.scopes = make(map[string]*repeatHistoryScope)
 }
 
 type toolStringField struct {
@@ -258,6 +300,194 @@ func dedupeRepeatedToolOutputs(root any, opts Options) []Hit {
 	return hits
 }
 
+func referenceRepeatedHistoryOutputs(root any, opts Options) []Hit {
+	scope := strings.TrimSpace(opts.ReferenceScope)
+	if scope == "" {
+		return nil
+	}
+	fields := collectKnownToolStringFields(root)
+	if len(fields) == 0 {
+		return nil
+	}
+	minBytes := opts.MinBytes
+	if minBytes <= 0 || minBytes > referenceMinBytes {
+		minBytes = referenceMinBytes
+	}
+	keepRecent := opts.ReferenceKeepRecent
+	if keepRecent <= 0 {
+		keepRecent = defaultReferenceKeepRecent
+	}
+	candidates := make([]repeatHistoryCandidate, 0, len(fields))
+	for _, field := range fields {
+		value, ok := field.obj[field.key].(string)
+		if !ok || len(value) < minBytes || strings.Contains(value, "duplicate reference") || strings.Contains(value, "repeated historical tool output") {
+			continue
+		}
+		canonical := canonicalReferenceText(value)
+		if len(canonical) < minBytes {
+			continue
+		}
+		candidates = append(candidates, repeatHistoryCandidate{
+			field:     field,
+			value:     value,
+			canonical: canonical,
+			hash:      shortContentHash(canonical),
+			key:       repeatHistoryKey(canonical),
+		})
+	}
+	if len(candidates) == 0 {
+		return nil
+	}
+	replaceBefore := len(candidates) - keepRecent
+	if replaceBefore < 0 {
+		replaceBefore = 0
+	}
+	now := time.Now()
+	seen := defaultRepeatHistoryStore.lookup(scope, candidates, replaceBefore, now)
+	var hits []Hit
+	for i := 0; i < replaceBefore; i++ {
+		candidate := candidates[i]
+		entry, ok := seen[candidate.key]
+		if !ok {
+			continue
+		}
+		replacement := wrapRepeatHistoryReference(entry.hash, len(candidate.value), entry.path)
+		if len(replacement) >= len(candidate.value) {
+			continue
+		}
+		candidate.field.obj[candidate.field.key] = replacement
+		hits = append(hits, Hit{
+			Path:          candidate.field.path,
+			Filter:        "repeat_history_reference",
+			Before:        len(candidate.value),
+			After:         len(replacement),
+			ReferenceHash: entry.hash,
+			ReferencePath: entry.path,
+		})
+	}
+	defaultRepeatHistoryStore.remember(scope, candidates, now)
+	return hits
+}
+
+func (s *repeatHistoryStore) lookup(scope string, candidates []repeatHistoryCandidate, replaceBefore int, now time.Time) map[string]repeatHistoryEntry {
+	if s == nil || replaceBefore <= 0 {
+		return nil
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.cleanupLocked(now)
+	scopeState := s.scopes[scope]
+	if scopeState == nil {
+		return nil
+	}
+	scopeState.lastSeen = now
+	seen := make(map[string]repeatHistoryEntry)
+	for i := 0; i < replaceBefore && i < len(candidates); i++ {
+		if entry, ok := scopeState.entries[candidates[i].key]; ok {
+			entry.lastSeen = now
+			scopeState.entries[candidates[i].key] = entry
+			seen[candidates[i].key] = entry
+		}
+	}
+	return seen
+}
+
+func (s *repeatHistoryStore) remember(scope string, candidates []repeatHistoryCandidate, now time.Time) {
+	if s == nil || strings.TrimSpace(scope) == "" || len(candidates) == 0 {
+		return
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.cleanupLocked(now)
+	scopeState := s.scopes[scope]
+	if scopeState == nil {
+		scopeState = &repeatHistoryScope{
+			lastSeen: now,
+			entries:  make(map[string]repeatHistoryEntry),
+		}
+		s.scopes[scope] = scopeState
+	}
+	scopeState.lastSeen = now
+	for _, candidate := range candidates {
+		entry, exists := scopeState.entries[candidate.key]
+		if exists {
+			entry.lastSeen = now
+			scopeState.entries[candidate.key] = entry
+			continue
+		}
+		scopeState.entries[candidate.key] = repeatHistoryEntry{
+			hash:     candidate.hash,
+			path:     candidate.field.path,
+			lastSeen: now,
+		}
+		scopeState.order = append(scopeState.order, candidate.key)
+	}
+	s.evictEntriesLocked(scopeState)
+	s.evictScopesLocked()
+}
+
+func (s *repeatHistoryStore) cleanupLocked(now time.Time) {
+	for scope, scopeState := range s.scopes {
+		if now.Sub(scopeState.lastSeen) > repeatHistoryTTL {
+			delete(s.scopes, scope)
+			continue
+		}
+		for canonical, entry := range scopeState.entries {
+			if now.Sub(entry.lastSeen) > repeatHistoryTTL {
+				delete(scopeState.entries, canonical)
+			}
+		}
+		compactRepeatHistoryOrder(scopeState)
+		if len(scopeState.entries) == 0 {
+			delete(s.scopes, scope)
+		}
+	}
+}
+
+func (s *repeatHistoryStore) evictEntriesLocked(scopeState *repeatHistoryScope) {
+	if scopeState == nil {
+		return
+	}
+	for len(scopeState.entries) > repeatHistoryMaxPerScope && len(scopeState.order) > 0 {
+		oldest := scopeState.order[0]
+		scopeState.order = scopeState.order[1:]
+		delete(scopeState.entries, oldest)
+	}
+	if len(scopeState.order) > repeatHistoryMaxPerScope*2 {
+		compactRepeatHistoryOrder(scopeState)
+	}
+}
+
+func compactRepeatHistoryOrder(scopeState *repeatHistoryScope) {
+	if scopeState == nil || len(scopeState.order) == 0 {
+		return
+	}
+	compacted := scopeState.order[:0]
+	for _, canonical := range scopeState.order {
+		if _, ok := scopeState.entries[canonical]; ok {
+			compacted = append(compacted, canonical)
+		}
+	}
+	scopeState.order = compacted
+}
+
+func (s *repeatHistoryStore) evictScopesLocked() {
+	for len(s.scopes) > repeatHistoryMaxScopes {
+		oldestScope := ""
+		var oldest time.Time
+		for scope, scopeState := range s.scopes {
+			if oldestScope == "" || scopeState.lastSeen.Before(oldest) {
+				oldestScope = scope
+				oldest = scopeState.lastSeen
+			}
+		}
+		if oldestScope == "" {
+			return
+		}
+		delete(s.scopes, oldestScope)
+	}
+}
+
 func canonicalReferenceText(value string) string {
 	value = strings.ReplaceAll(value, "\r\n", "\n")
 	value = strings.TrimRight(value, "\n")
@@ -281,8 +511,16 @@ func shortContentHash(value string) string {
 	return fmt.Sprintf("%x", sum[:8])
 }
 
+func repeatHistoryKey(value string) string {
+	return fmt.Sprintf("%s:%d", shortContentHash(value), len(value))
+}
+
 func wrapDuplicateReference(hash string, before int, firstPath string) string {
 	return fmt.Sprintf("%s duplicate reference; hash %s; original %d bytes; first %s]\nSame tool output as %s.", markerPrefix, hash, before, firstPath, firstPath)
+}
+
+func wrapRepeatHistoryReference(hash string, before int, firstPath string) string {
+	return fmt.Sprintf("%s repeated historical tool output; hash %s; original %d bytes; first %s]\nThis tool output was already observed earlier in this Codex context.", markerPrefix, hash, before, firstPath)
 }
 
 func mutateAnthropicContent(raw any, path string, opts Options) ([]Hit, []Miss) {

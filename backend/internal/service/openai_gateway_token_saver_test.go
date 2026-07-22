@@ -71,6 +71,25 @@ func TestOpenAITokenSaverHitStats(t *testing.T) {
 	}
 }
 
+func TestOpenAITokenSaverReferenceScopeUsesAccountModelAndHashedCacheKey(t *testing.T) {
+	body := []byte(`{"model":" gpt-5.5 ","prompt_cache_key":" raw-secret-session "}`)
+
+	scope := openAITokenSaverReferenceScope(&Account{ID: 123}, body)
+
+	if !strings.Contains(scope, "account=123") || !strings.Contains(scope, "model=gpt-5.5") {
+		t.Fatalf("scope missing account/model: %q", scope)
+	}
+	if strings.Contains(scope, "raw-secret-session") {
+		t.Fatalf("scope leaked raw prompt cache key: %q", scope)
+	}
+	if !strings.Contains(scope, hashSensitiveValueForLog("raw-secret-session")) {
+		t.Fatalf("scope missing cache key hash: %q", scope)
+	}
+	if got := openAITokenSaverReferenceScope(&Account{ID: 123}, []byte(`{"model":"gpt-5.5"}`)); got != "" {
+		t.Fatalf("expected no scope without prompt_cache_key, got %q", got)
+	}
+}
+
 func tokenSaverGinContext() *gin.Context {
 	gin.SetMode(gin.TestMode)
 	w := httptest.NewRecorder()

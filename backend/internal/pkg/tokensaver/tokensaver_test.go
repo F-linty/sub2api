@@ -174,6 +174,51 @@ func TestCompressJSONReferencesDuplicateShellOutputWithDifferentWallTime(t *test
 	}
 }
 
+func TestCompressJSONReferencesRepeatedHistoryAcrossRequests(t *testing.T) {
+	resetRepeatHistoryForTesting()
+	scope := "account=1|model=gpt-5.5|pc=cache"
+	oldOutput := shellOutputWithWallTime(largeCompilingLog(), "0.5 seconds")
+	newOutput := shellOutputWithWallTime(largeMediumUnstructuredOutput(), "0.7 seconds")
+	firstBody := fmt.Sprintf(`{"input":[{"type":"function_call_output","output":%q}]}`, oldOutput)
+
+	first, err := CompressJSON([]byte(firstBody), Options{MinBytes: 64, ReferenceScope: scope})
+	if err != nil {
+		t.Fatalf("first CompressJSON returned error: %v", err)
+	}
+	if !first.Changed || len(first.Hits) != 1 || first.Hits[0].Filter != "shell_output/build_log" {
+		t.Fatalf("unexpected first result: changed=%v hits=%#v", first.Changed, first.Hits)
+	}
+
+	secondBody := fmt.Sprintf(`{"input":[{"type":"function_call_output","output":%q},{"type":"function_call_output","output":%q}]}`, oldOutput, newOutput)
+	second, err := CompressJSON([]byte(secondBody), Options{MinBytes: 64, ReferenceScope: scope, ReferenceKeepRecent: 1})
+	if err != nil {
+		t.Fatalf("second CompressJSON returned error: %v", err)
+	}
+	if !second.Changed {
+		t.Fatalf("expected repeated historical output to be referenced")
+	}
+	if len(second.Hits) != 3 {
+		t.Fatalf("expected two compression hits plus one history reference, got %#v", second.Hits)
+	}
+	if second.Hits[2].Filter != "repeat_history_reference" || second.Hits[2].ReferencePath != "$.input[0].output" {
+		t.Fatalf("unexpected history reference hit: %#v", second.Hits[2])
+	}
+	var decoded struct {
+		Input []struct {
+			Output string `json:"output"`
+		} `json:"input"`
+	}
+	if err := json.Unmarshal(second.Body, &decoded); err != nil {
+		t.Fatalf("second compressed body is invalid JSON: %v", err)
+	}
+	if !strings.Contains(decoded.Input[0].Output, "repeated historical tool output") {
+		t.Fatalf("expected historical reference, got %q", decoded.Input[0].Output)
+	}
+	if strings.Contains(decoded.Input[1].Output, "repeated historical tool output") {
+		t.Fatalf("expected newest output to be retained, got %q", decoded.Input[1].Output)
+	}
+}
+
 func TestCompressJSONGitStatus(t *testing.T) {
 	body := fmt.Sprintf(`{"input":[{"type":"function_call_output","output":%q}]}`, largeGitStatus())
 
