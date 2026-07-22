@@ -18,6 +18,7 @@ const (
 	shellOutputTailBytes    = 450
 	findPerDirMax           = 10
 	findTotalDirMax         = 30
+	pathCompactExampleMax   = 80
 	treeMaxLines            = 200
 	lsExtSummaryTop         = 5
 	searchListPerDirMax     = 10
@@ -34,7 +35,7 @@ var (
 	gitStatusLineRE    = regexp.MustCompile(`(?m)^[ MADRCU?!][MADRCU?!] \S`)
 	lsRowRE            = regexp.MustCompile(`^[-dlbcps][rwx-]{9}`)
 	lsDateRE           = regexp.MustCompile(`\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d{1,2}\s+(\d{4}|\d{2}:\d{2})\s+`)
-	searchListHeaderRE = regexp.MustCompile(`(?i)^Result of search in '.+' \(total \d+ files\):`)
+	searchListHeaderRE = regexp.MustCompile(`(?i)^(Result of search in '.+' \(total \d+ files\)|Found \d+ files?|Search results?:)\s*:?$`)
 	readNumberedRE     = regexp.MustCompile(`^\s*\d+\s*[|:]\s?`)
 )
 
@@ -414,6 +415,7 @@ func compactPathLines(label string, lines []string, perDirMax, totalDirMax int) 
 		return dirs[names[i]].count > dirs[names[j]].count
 	})
 	out := []string{fmt.Sprintf("%s entries=%d dirs=%d extensions=%s", label, len(lines), len(dirs), strings.Join(topCounts(extCounts, 12), ","))}
+	examplesKept := 0
 	for i, name := range names {
 		if i >= totalDirMax {
 			out = append(out, fmt.Sprintf("... %d more dirs omitted", len(names)-i))
@@ -421,7 +423,19 @@ func compactPathLines(label string, lines []string, perDirMax, totalDirMax int) 
 		}
 		stats := dirs[name]
 		out = append(out, fmt.Sprintf("%s entries=%d", name, stats.count))
-		out = append(out, stats.first...)
+		remaining := pathCompactExampleMax - examplesKept
+		if remaining <= 0 {
+			continue
+		}
+		examples := stats.first
+		if len(examples) > remaining {
+			examples = examples[:remaining]
+		}
+		out = append(out, examples...)
+		examplesKept += len(examples)
+	}
+	if omitted := len(lines) - examplesKept; omitted > 0 {
+		out = append(out, fmt.Sprintf("... %d path entries omitted", omitted))
 	}
 	return strings.Join(out, "\n")
 }

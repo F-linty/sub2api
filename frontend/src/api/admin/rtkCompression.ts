@@ -128,6 +128,7 @@ export interface RTKCompressionSnapshot {
   enabled: boolean
   min_bytes: number
   max_bytes: number
+  output_style?: RTKOutputStyleConfig
   started_at: string
   updated_at?: string
   requests: number
@@ -146,11 +147,26 @@ export interface RTKCompressionSnapshot {
   codex_chain?: CodexChainSnapshot
 }
 
+export interface RTKOutputStyleConfig {
+  enabled: boolean
+  level: 'concise' | 'terse' | string
+}
+
+export interface UpdateRTKCompressionConfigRequest {
+  output_style?: RTKOutputStyleConfig
+}
+
 export async function getSnapshot(): Promise<RTKCompressionSnapshot> {
   const { data } = await apiClient.get<RTKCompressionSnapshot>('/admin/rtk-compression/snapshot')
   return data
 }
 
+export async function updateConfig(payload: UpdateRTKCompressionConfigRequest): Promise<RTKCompressionSnapshot> {
+  const { data } = await apiClient.put<RTKCompressionSnapshot>('/admin/rtk-compression/config', payload)
+  return data
+}
+
 export default {
-  getSnapshot
+  getSnapshot,
+  updateConfig
 }

@@ -231,6 +231,45 @@ func TestCompressJSONGitStatus(t *testing.T) {
 	}
 }
 
+func TestCompressJSONGitLog(t *testing.T) {
+	body := fmt.Sprintf(`{"input":[{"type":"function_call_output","output":%q}]}`, largeGitLog())
+
+	result, err := CompressJSON([]byte(body), Options{MinBytes: 64})
+	if err != nil {
+		t.Fatalf("CompressJSON returned error: %v", err)
+	}
+	if !result.Changed || len(result.Hits) != 1 || result.Hits[0].Filter != "git_log" {
+		t.Fatalf("unexpected result: changed=%v hits=%#v", result.Changed, result.Hits)
+	}
+	if result.Hits[0].After >= result.Hits[0].Before/2 {
+		t.Fatalf("expected git log to shrink substantially: %#v", result.Hits[0])
+	}
+}
+
+func TestCompressJSONFindOutput(t *testing.T) {
+	body := fmt.Sprintf(`{"messages":[{"role":"tool","content":%q}]}`, largeFindOutput())
+
+	result, err := CompressJSON([]byte(body), Options{MinBytes: 64})
+	if err != nil {
+		t.Fatalf("CompressJSON returned error: %v", err)
+	}
+	if !result.Changed || len(result.Hits) != 1 || result.Hits[0].Filter != "find" {
+		t.Fatalf("unexpected result: changed=%v hits=%#v", result.Changed, result.Hits)
+	}
+}
+
+func TestCompressJSONTreeOutput(t *testing.T) {
+	body := fmt.Sprintf(`{"messages":[{"role":"tool","content":%q}]}`, largeTreeOutput())
+
+	result, err := CompressJSON([]byte(body), Options{MinBytes: 64})
+	if err != nil {
+		t.Fatalf("CompressJSON returned error: %v", err)
+	}
+	if !result.Changed || len(result.Hits) != 1 || result.Hits[0].Filter != "tree" {
+		t.Fatalf("unexpected result: changed=%v hits=%#v", result.Changed, result.Hits)
+	}
+}
+
 func TestCompressJSONLSOutput(t *testing.T) {
 	body := fmt.Sprintf(`{"messages":[{"role":"tool","content":%q}]}`, largeLSOutput())
 
@@ -239,6 +278,30 @@ func TestCompressJSONLSOutput(t *testing.T) {
 		t.Fatalf("CompressJSON returned error: %v", err)
 	}
 	if !result.Changed || len(result.Hits) != 1 || result.Hits[0].Filter != "ls" {
+		t.Fatalf("unexpected result: changed=%v hits=%#v", result.Changed, result.Hits)
+	}
+}
+
+func TestCompressJSONSearchList(t *testing.T) {
+	body := fmt.Sprintf(`{"messages":[{"role":"tool","content":%q}]}`, largeSearchList())
+
+	result, err := CompressJSON([]byte(body), Options{MinBytes: 64})
+	if err != nil {
+		t.Fatalf("CompressJSON returned error: %v", err)
+	}
+	if !result.Changed || len(result.Hits) != 1 || result.Hits[0].Filter != "search_list" {
+		t.Fatalf("unexpected result: changed=%v hits=%#v", result.Changed, result.Hits)
+	}
+}
+
+func TestCompressJSONReadNumbered(t *testing.T) {
+	body := fmt.Sprintf(`{"messages":[{"role":"tool","content":%q}]}`, largeReadNumberedOutput())
+
+	result, err := CompressJSON([]byte(body), Options{MinBytes: 64})
+	if err != nil {
+		t.Fatalf("CompressJSON returned error: %v", err)
+	}
+	if !result.Changed || len(result.Hits) != 1 || result.Hits[0].Filter != "read_numbered" {
 		t.Fatalf("unexpected result: changed=%v hits=%#v", result.Changed, result.Hits)
 	}
 }
@@ -299,6 +362,33 @@ func TestCompressJSONShellOutputWrapsInnerFilter(t *testing.T) {
 	}
 	if !strings.Contains(decoded.Messages[0].Content, "Output: compressed via build_log") {
 		t.Fatalf("expected inner filter note, got %q", decoded.Messages[0].Content)
+	}
+}
+
+func TestCompressJSONShellOutputWrapsStructuredFilters(t *testing.T) {
+	cases := []struct {
+		name   string
+		output string
+		filter string
+	}{
+		{name: "git_log", output: largeGitLog(), filter: "shell_output/git_log"},
+		{name: "find", output: largeFindOutput(), filter: "shell_output/find"},
+		{name: "tree", output: largeTreeOutput(), filter: "shell_output/tree"},
+		{name: "search_list", output: largeSearchList(), filter: "shell_output/search_list"},
+		{name: "read_numbered", output: largeReadNumberedOutput(), filter: "shell_output/read_numbered"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			body := fmt.Sprintf(`{"messages":[{"role":"tool","content":%q}]}`, shellOutput(tc.output))
+
+			result, err := CompressJSON([]byte(body), Options{MinBytes: 64})
+			if err != nil {
+				t.Fatalf("CompressJSON returned error: %v", err)
+			}
+			if !result.Changed || len(result.Hits) != 1 || result.Hits[0].Filter != tc.filter {
+				t.Fatalf("unexpected result: changed=%v hits=%#v", result.Changed, result.Hits)
+			}
+		})
 	}
 }
 
@@ -386,6 +476,40 @@ func largeGitStatus() string {
 	return b.String()
 }
 
+func largeGitLog() string {
+	var b strings.Builder
+	for i := 0; i < 90; i++ {
+		fmt.Fprintf(&b, "commit %040d\n", i)
+		fmt.Fprintf(&b, "Author: Developer %d <dev%d@example.com>\n", i, i)
+		fmt.Fprintf(&b, "Date:   Tue Jul 21 12:%02d:00 2026 +0800\n\n", i%60)
+		fmt.Fprintf(&b, "    implement token saver change %03d with verbose details\n\n", i)
+	}
+	return b.String()
+}
+
+func largeFindOutput() string {
+	var b strings.Builder
+	for d := 0; d < 24; d++ {
+		for i := 0; i < 16; i++ {
+			fmt.Fprintf(&b, "./backend/internal/module_%02d/file_%03d.go\n", d, i)
+		}
+	}
+	return b.String()
+}
+
+func largeTreeOutput() string {
+	var b strings.Builder
+	b.WriteString(".\n")
+	for d := 0; d < 40; d++ {
+		fmt.Fprintf(&b, "├── module_%02d\n", d)
+		for i := 0; i < 8; i++ {
+			fmt.Fprintf(&b, "│  ├── file_%03d.go\n", i)
+		}
+	}
+	b.WriteString("└── go.mod\n")
+	return b.String()
+}
+
 func largeLSOutput() string {
 	var b strings.Builder
 	b.WriteString("total 2000\n")
@@ -394,6 +518,25 @@ func largeLSOutput() string {
 	}
 	for i := 0; i < 12; i++ {
 		fmt.Fprintf(&b, "drwxr-xr-x 1 user group 4096 Jul 18 18:26 dir_%03d\n", i)
+	}
+	return b.String()
+}
+
+func largeSearchList() string {
+	var b strings.Builder
+	b.WriteString("Result of search in 'backend' (total 260 files):\n")
+	for d := 0; d < 26; d++ {
+		for i := 0; i < 10; i++ {
+			fmt.Fprintf(&b, "backend/internal/search_%02d/result_%03d.ts\n", d, i)
+		}
+	}
+	return b.String()
+}
+
+func largeReadNumberedOutput() string {
+	var b strings.Builder
+	for i := 1; i <= 360; i++ {
+		fmt.Fprintf(&b, "%4d| const value%03d = computeVerboseThing(%d)\n", i, i, i)
 	}
 	return b.String()
 }

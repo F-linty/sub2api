@@ -24,7 +24,7 @@
       </div>
 
       <div class="card p-5">
-        <div class="flex flex-wrap items-center justify-between gap-3">
+        <div class="flex flex-wrap items-start justify-between gap-5">
           <div>
             <h2 class="text-base font-semibold text-gray-950 dark:text-white">{{ t('admin.rtkCompression.config') }}</h2>
             <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
@@ -43,6 +43,35 @@
             <div>
               <span class="text-gray-500 dark:text-gray-400">{{ t('admin.rtkCompression.lastUpdated') }}</span>
               <p class="font-medium text-gray-950 dark:text-white">{{ formatDateTime(snapshot?.updated_at) || t('admin.rtkCompression.noHits') }}</p>
+            </div>
+          </div>
+        </div>
+        <div class="mt-5 border-t border-gray-100 pt-5 dark:border-dark-700">
+          <div class="flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <h3 class="text-sm font-semibold text-gray-950 dark:text-white">{{ t('admin.rtkCompression.advanced.title') }}</h3>
+              <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ t('admin.rtkCompression.advanced.description') }}</p>
+            </div>
+            <div class="flex flex-wrap items-center gap-3">
+              <label class="inline-flex items-center gap-2 text-sm text-gray-700 dark:text-gray-200">
+                <input
+                  :checked="outputStyleEnabled"
+                  type="checkbox"
+                  class="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                  :disabled="savingConfig"
+                  @change="toggleOutputStyle(($event.target as HTMLInputElement).checked)"
+                />
+                <span>{{ t('admin.rtkCompression.advanced.outputStyle') }}</span>
+              </label>
+              <select
+                class="form-select rounded-lg border-gray-300 text-sm dark:border-dark-600 dark:bg-dark-800 dark:text-gray-100"
+                :value="outputStyleLevel"
+                :disabled="savingConfig || !outputStyleEnabled"
+                @change="changeOutputStyleLevel(($event.target as HTMLSelectElement).value)"
+              >
+                <option value="concise">{{ t('admin.rtkCompression.advanced.concise') }}</option>
+                <option value="terse">{{ t('admin.rtkCompression.advanced.terse') }}</option>
+              </select>
             </div>
           </div>
         </div>
@@ -480,6 +509,7 @@ import type { RTKCompressionEvent, RTKCompressionSnapshot } from '@/api/admin/rt
 const { t } = useI18n()
 
 const loading = ref(false)
+const savingConfig = ref(false)
 const errorMessage = ref('')
 const snapshot = ref<RTKCompressionSnapshot | null>(null)
 const autoRefresh = ref(true)
@@ -498,6 +528,8 @@ const promptCacheEvents = computed(() => promptCache.value?.recent_events ?? [])
 const codexChain = computed(() => snapshot.value?.codex_chain)
 const codexChainTransports = computed(() => codexChain.value?.by_transport ?? [])
 const codexChainEvents = computed(() => codexChain.value?.recent_events ?? [])
+const outputStyleEnabled = computed(() => snapshot.value?.output_style?.enabled === true)
+const outputStyleLevel = computed(() => snapshot.value?.output_style?.level || 'concise')
 const selectedCompressionEventRows = computed(() => {
   const event = selectedCompressionEvent.value
   if (!event) return []
@@ -566,6 +598,28 @@ async function loadSnapshot() {
   } finally {
     loading.value = false
   }
+}
+
+async function saveOutputStyle(enabled: boolean, level: string) {
+  savingConfig.value = true
+  errorMessage.value = ''
+  try {
+    snapshot.value = await adminAPI.rtkCompression.updateConfig({
+      output_style: { enabled, level },
+    })
+  } catch (error: any) {
+    errorMessage.value = error?.message || 'Failed to save RTK compression config'
+  } finally {
+    savingConfig.value = false
+  }
+}
+
+function toggleOutputStyle(enabled: boolean) {
+  void saveOutputStyle(enabled, outputStyleLevel.value)
+}
+
+function changeOutputStyleLevel(level: string) {
+  void saveOutputStyle(outputStyleEnabled.value, level)
 }
 
 function setupAutoRefresh() {

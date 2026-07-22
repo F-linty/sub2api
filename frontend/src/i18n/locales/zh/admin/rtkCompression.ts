@@ -11,6 +11,13 @@ export default {
     maxBytes: '处理上限',
     lastUpdated: '最后命中',
     noHits: '还没有压缩命中',
+    advanced: {
+      title: '高级压缩选项',
+      description: '这些选项可能改变回答长度或完整度，默认关闭，适合单独灰度测试。',
+      outputStyle: '回答精简提示',
+      concise: '精简',
+      terse: '极简',
+    },
     cards: {
       requests: '压缩请求',
       hits: '命中块',

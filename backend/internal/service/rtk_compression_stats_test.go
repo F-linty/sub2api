@@ -21,9 +21,12 @@ func TestRTKCompressionRecorderSnapshot(t *testing.T) {
 		{Part: "tools/schema", Count: 1, Bytes: 120},
 	})
 
-	snapshot := recorder.Snapshot(true, 2048, 524288)
+	snapshot := recorder.Snapshot(true, 2048, 524288, RTKOutputStyleConfig{Enabled: true, Level: "terse"})
 	if !snapshot.Enabled || snapshot.MinBytes != 2048 || snapshot.MaxBytes != 524288 {
 		t.Fatalf("unexpected config fields: %#v", snapshot)
+	}
+	if !snapshot.OutputStyle.Enabled || snapshot.OutputStyle.Level != "terse" {
+		t.Fatalf("unexpected output style config: %#v", snapshot.OutputStyle)
 	}
 	if snapshot.Requests != 1 || snapshot.Hits != 2 || snapshot.Before != 1000 ||
 		snapshot.After != 350 || snapshot.BytesSaved != 650 {
@@ -57,7 +60,7 @@ func TestRTKCompressionRecorderTracksMissesSeparately(t *testing.T) {
 		},
 	})
 
-	snapshot := recorder.Snapshot(true, 2048, 524288)
+	snapshot := recorder.Snapshot(true, 2048, 524288, RTKOutputStyleConfig{})
 	if snapshot.Requests != 0 || snapshot.Hits != 0 || snapshot.Before != 0 || snapshot.BytesSaved != 0 {
 		t.Fatalf("miss-only requests should not affect compression totals: %#v", snapshot)
 	}

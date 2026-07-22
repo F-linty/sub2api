@@ -119,6 +119,7 @@ func registerRTKCompressionRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
 	rtk := admin.Group("/rtk-compression")
 	{
 		rtk.GET("/snapshot", h.Admin.RTKCompression.GetSnapshot)
+		rtk.PUT("/config", h.Admin.RTKCompression.UpdateConfig)
 	}
 }
 

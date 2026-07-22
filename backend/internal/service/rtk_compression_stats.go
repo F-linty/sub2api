@@ -81,6 +81,7 @@ type RTKCompressionSnapshot struct {
 	Enabled       bool                        `json:"enabled"`
 	MinBytes      int                         `json:"min_bytes"`
 	MaxBytes      int                         `json:"max_bytes"`
+	OutputStyle   RTKOutputStyleConfig        `json:"output_style"`
 	StartedAt     time.Time                   `json:"started_at"`
 	UpdatedAt     *time.Time                  `json:"updated_at,omitempty"`
 	Requests      int64                       `json:"requests"`
@@ -97,6 +98,11 @@ type RTKCompressionSnapshot struct {
 	RecentEvents  []RTKCompressionEvent       `json:"recent_events"`
 	PromptCache   CodexPromptCacheSnapshot    `json:"prompt_cache"`
 	CodexChain    CodexChainSnapshot          `json:"codex_chain"`
+}
+
+type RTKOutputStyleConfig struct {
+	Enabled bool   `json:"enabled"`
+	Level   string `json:"level"`
 }
 
 type RTKCompressionRecorder struct {
@@ -464,9 +470,9 @@ func (r *RTKCompressionRecorder) Record(accountID int64, result tokensaver.Resul
 	}
 }
 
-func (r *RTKCompressionRecorder) Snapshot(enabled bool, minBytes, maxBytes int) RTKCompressionSnapshot {
+func (r *RTKCompressionRecorder) Snapshot(enabled bool, minBytes, maxBytes int, outputStyle RTKOutputStyleConfig) RTKCompressionSnapshot {
 	if r == nil {
-		return RTKCompressionSnapshot{Enabled: enabled, MinBytes: minBytes, MaxBytes: maxBytes}
+		return RTKCompressionSnapshot{Enabled: enabled, MinBytes: minBytes, MaxBytes: maxBytes, OutputStyle: outputStyle}
 	}
 	r.mu.RLock()
 	defer r.mu.RUnlock()
@@ -495,6 +501,7 @@ func (r *RTKCompressionRecorder) Snapshot(enabled bool, minBytes, maxBytes int) 
 		Enabled:       enabled,
 		MinBytes:      minBytes,
 		MaxBytes:      maxBytes,
+		OutputStyle:   outputStyle,
 		StartedAt:     r.startedAt,
 		UpdatedAt:     r.updatedAt,
 		Requests:      r.requests,

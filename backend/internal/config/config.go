@@ -744,6 +744,10 @@ type GatewayTokenSaverConfig struct {
 	MaxBytes int `mapstructure:"max_bytes"`
 	// LogEnabled: 命中压缩时记录节省统计
 	LogEnabled bool `mapstructure:"log_enabled"`
+	// OutputStyleEnabled: 可选回答精简提示，默认关闭；开启后可能降低回答完整度
+	OutputStyleEnabled bool `mapstructure:"output_style_enabled"`
+	// OutputStyleLevel: 回答精简强度：concise/terse
+	OutputStyleLevel string `mapstructure:"output_style_level"`
 }
 
 const (
@@ -2041,6 +2045,8 @@ func setDefaults() {
 	viper.SetDefault("gateway.token_saver.min_bytes", 2048)
 	viper.SetDefault("gateway.token_saver.max_bytes", 512*1024)
 	viper.SetDefault("gateway.token_saver.log_enabled", true)
+	viper.SetDefault("gateway.token_saver.output_style_enabled", false)
+	viper.SetDefault("gateway.token_saver.output_style_level", "concise")
 	viper.SetDefault("gateway.antigravity_fallback_cooldown_minutes", 1)
 	viper.SetDefault("gateway.antigravity_extra_retries", 10)
 	viper.SetDefault("gateway.max_body_size", int64(256*1024*1024))
@@ -2704,6 +2710,11 @@ func (c *Config) Validate() error {
 	if c.Gateway.TokenSaver.MinBytes > 0 && c.Gateway.TokenSaver.MaxBytes > 0 &&
 		c.Gateway.TokenSaver.MaxBytes < c.Gateway.TokenSaver.MinBytes {
 		return fmt.Errorf("gateway.token_saver.max_bytes must be >= min_bytes")
+	}
+	switch strings.ToLower(strings.TrimSpace(c.Gateway.TokenSaver.OutputStyleLevel)) {
+	case "", "concise", "terse":
+	default:
+		return fmt.Errorf("gateway.token_saver.output_style_level must be one of: concise/terse")
 	}
 	if c.Gateway.MaxIdleConns <= 0 {
 		return fmt.Errorf("gateway.max_idle_conns must be positive")

@@ -11,6 +11,13 @@ export default {
     maxBytes: 'Max bytes',
     lastUpdated: 'Last hit',
     noHits: 'No compression hits yet',
+    advanced: {
+      title: 'Advanced Compression Options',
+      description: 'These options may change answer length or completeness. They are off by default for separate gray testing.',
+      outputStyle: 'Answer brevity hint',
+      concise: 'Concise',
+      terse: 'Terse',
+    },
     cards: {
       requests: 'Compressed requests',
       hits: 'Hit blocks',
