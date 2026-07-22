@@ -31,6 +31,12 @@ export interface RTKCompressionMissStat {
   sample?: string
 }
 
+export interface RTKRequestPartStats {
+  part: string
+  count: number
+  bytes: number
+}
+
 export interface RTKCompressionEvent {
   at: string
   account_id?: string | number
@@ -42,6 +48,7 @@ export interface RTKCompressionEvent {
   hit_stats?: RTKCompressionHitStat[]
   misses?: number
   miss_stats?: RTKCompressionMissStat[]
+  request_parts?: RTKRequestPartStats[]
 }
 
 export interface CodexPromptCacheOutcomeStats {
@@ -133,6 +140,7 @@ export interface RTKCompressionSnapshot {
   save_ratio: number
   by_filter?: RTKCompressionFilterStats[]
   by_miss_reason?: RTKCompressionMissReasonStats[]
+  by_request_part?: RTKRequestPartStats[]
   recent_events?: RTKCompressionEvent[]
   prompt_cache?: CodexPromptCacheSnapshot
   codex_chain?: CodexChainSnapshot

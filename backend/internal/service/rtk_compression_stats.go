@@ -57,38 +57,46 @@ type RTKCompressionMissStat struct {
 	Sample string `json:"sample,omitempty"`
 }
 
+type RTKRequestPartStats struct {
+	Part  string `json:"part"`
+	Count int64  `json:"count"`
+	Bytes int64  `json:"bytes"`
+}
+
 type RTKCompressionEvent struct {
-	At         time.Time                `json:"at"`
-	AccountID  int64                    `json:"account_id,omitempty"`
-	Before     int                      `json:"before"`
-	After      int                      `json:"after"`
-	BytesSaved int                      `json:"bytes_saved"`
-	Hits       int                      `json:"hits"`
-	Filters    []string                 `json:"filters"`
-	HitStats   []RTKCompressionHitStat  `json:"hit_stats"`
-	Misses     int                      `json:"misses,omitempty"`
-	MissStats  []RTKCompressionMissStat `json:"miss_stats,omitempty"`
+	At           time.Time                `json:"at"`
+	AccountID    int64                    `json:"account_id,omitempty"`
+	Before       int                      `json:"before"`
+	After        int                      `json:"after"`
+	BytesSaved   int                      `json:"bytes_saved"`
+	Hits         int                      `json:"hits"`
+	Filters      []string                 `json:"filters"`
+	HitStats     []RTKCompressionHitStat  `json:"hit_stats"`
+	Misses       int                      `json:"misses,omitempty"`
+	MissStats    []RTKCompressionMissStat `json:"miss_stats,omitempty"`
+	RequestParts []RTKRequestPartStats    `json:"request_parts,omitempty"`
 }
 
 type RTKCompressionSnapshot struct {
-	Enabled      bool                        `json:"enabled"`
-	MinBytes     int                         `json:"min_bytes"`
-	MaxBytes     int                         `json:"max_bytes"`
-	StartedAt    time.Time                   `json:"started_at"`
-	UpdatedAt    *time.Time                  `json:"updated_at,omitempty"`
-	Requests     int64                       `json:"requests"`
-	Hits         int64                       `json:"hits"`
-	Misses       int64                       `json:"misses"`
-	MissedBytes  int64                       `json:"missed_bytes"`
-	Before       int64                       `json:"before"`
-	After        int64                       `json:"after"`
-	BytesSaved   int64                       `json:"bytes_saved"`
-	SaveRatio    float64                     `json:"save_ratio"`
-	ByFilter     []RTKCompressionFilterStats `json:"by_filter"`
-	ByMissReason []RTKCompressionMissStats   `json:"by_miss_reason"`
-	RecentEvents []RTKCompressionEvent       `json:"recent_events"`
-	PromptCache  CodexPromptCacheSnapshot    `json:"prompt_cache"`
-	CodexChain   CodexChainSnapshot          `json:"codex_chain"`
+	Enabled       bool                        `json:"enabled"`
+	MinBytes      int                         `json:"min_bytes"`
+	MaxBytes      int                         `json:"max_bytes"`
+	StartedAt     time.Time                   `json:"started_at"`
+	UpdatedAt     *time.Time                  `json:"updated_at,omitempty"`
+	Requests      int64                       `json:"requests"`
+	Hits          int64                       `json:"hits"`
+	Misses        int64                       `json:"misses"`
+	MissedBytes   int64                       `json:"missed_bytes"`
+	Before        int64                       `json:"before"`
+	After         int64                       `json:"after"`
+	BytesSaved    int64                       `json:"bytes_saved"`
+	SaveRatio     float64                     `json:"save_ratio"`
+	ByFilter      []RTKCompressionFilterStats `json:"by_filter"`
+	ByMissReason  []RTKCompressionMissStats   `json:"by_miss_reason"`
+	ByRequestPart []RTKRequestPartStats       `json:"by_request_part"`
+	RecentEvents  []RTKCompressionEvent       `json:"recent_events"`
+	PromptCache   CodexPromptCacheSnapshot    `json:"prompt_cache"`
+	CodexChain    CodexChainSnapshot          `json:"codex_chain"`
 }
 
 type RTKCompressionRecorder struct {
@@ -104,6 +112,7 @@ type RTKCompressionRecorder struct {
 	saved     int64
 	byFilter  map[string]*RTKCompressionFilterStats
 	byMiss    map[string]*RTKCompressionMissStats
+	byPart    map[string]*RTKRequestPartStats
 	recent    []RTKCompressionEvent
 }
 
@@ -376,25 +385,28 @@ func NewRTKCompressionRecorder() *RTKCompressionRecorder {
 		startedAt: time.Now(),
 		byFilter:  make(map[string]*RTKCompressionFilterStats),
 		byMiss:    make(map[string]*RTKCompressionMissStats),
+		byPart:    make(map[string]*RTKRequestPartStats),
 	}
 }
 
-func (r *RTKCompressionRecorder) Record(accountID int64, result tokensaver.Result) {
+func (r *RTKCompressionRecorder) Record(accountID int64, result tokensaver.Result, requestParts ...[]RTKRequestPartStats) {
 	if r == nil || (!result.Changed && len(result.Misses) == 0) {
 		return
 	}
 	now := time.Now()
+	parts := flattenRTKRequestParts(requestParts)
 	event := RTKCompressionEvent{
-		At:         now,
-		AccountID:  accountID,
-		Before:     result.Before,
-		After:      result.After,
-		BytesSaved: result.Before - result.After,
-		Hits:       len(result.Hits),
-		Filters:    rtkCompressionFilters(result.Hits),
-		HitStats:   rtkCompressionHitStats(result.Hits),
-		Misses:     len(result.Misses),
-		MissStats:  rtkCompressionMissStats(result.Misses),
+		At:           now,
+		AccountID:    accountID,
+		Before:       result.Before,
+		After:        result.After,
+		BytesSaved:   result.Before - result.After,
+		Hits:         len(result.Hits),
+		Filters:      rtkCompressionFilters(result.Hits),
+		HitStats:     rtkCompressionHitStats(result.Hits),
+		Misses:       len(result.Misses),
+		MissStats:    rtkCompressionMissStats(result.Misses),
+		RequestParts: parts,
 	}
 
 	r.mu.Lock()
@@ -433,6 +445,19 @@ func (r *RTKCompressionRecorder) Record(accountID int64, result tokensaver.Resul
 		r.misses++
 		r.missed += int64(miss.Before)
 	}
+	for _, part := range parts {
+		name := strings.TrimSpace(part.Part)
+		if name == "" {
+			name = "unknown"
+		}
+		stats := r.byPart[name]
+		if stats == nil {
+			stats = &RTKRequestPartStats{Part: name}
+			r.byPart[name] = stats
+		}
+		stats.Count += part.Count
+		stats.Bytes += part.Bytes
+	}
 	r.recent = append([]RTKCompressionEvent{event}, r.recent...)
 	if len(r.recent) > rtkCompressionRecentLimit {
 		r.recent = r.recent[:rtkCompressionRecentLimit]
@@ -456,31 +481,57 @@ func (r *RTKCompressionRecorder) Snapshot(enabled bool, minBytes, maxBytes int) 
 		byMiss = append(byMiss, *stats)
 	}
 	sortRTKCompressionMissStats(byMiss)
+	byPart := make([]RTKRequestPartStats, 0, len(r.byPart))
+	for _, stats := range r.byPart {
+		byPart = append(byPart, *stats)
+	}
+	sortRTKRequestPartStats(byPart)
 	recent := append([]RTKCompressionEvent(nil), r.recent...)
 	ratio := 0.0
 	if r.before > 0 {
 		ratio = float64(r.saved) / float64(r.before)
 	}
 	return RTKCompressionSnapshot{
-		Enabled:      enabled,
-		MinBytes:     minBytes,
-		MaxBytes:     maxBytes,
-		StartedAt:    r.startedAt,
-		UpdatedAt:    r.updatedAt,
-		Requests:     r.requests,
-		Hits:         r.hits,
-		Misses:       r.misses,
-		MissedBytes:  r.missed,
-		Before:       r.before,
-		After:        r.after,
-		BytesSaved:   r.saved,
-		SaveRatio:    ratio,
-		ByFilter:     byFilter,
-		ByMissReason: byMiss,
-		RecentEvents: recent,
-		PromptCache:  DefaultCodexPromptCacheRecorder().Snapshot(),
-		CodexChain:   DefaultCodexChainRecorder().Snapshot(),
+		Enabled:       enabled,
+		MinBytes:      minBytes,
+		MaxBytes:      maxBytes,
+		StartedAt:     r.startedAt,
+		UpdatedAt:     r.updatedAt,
+		Requests:      r.requests,
+		Hits:          r.hits,
+		Misses:        r.misses,
+		MissedBytes:   r.missed,
+		Before:        r.before,
+		After:         r.after,
+		BytesSaved:    r.saved,
+		SaveRatio:     ratio,
+		ByFilter:      byFilter,
+		ByMissReason:  byMiss,
+		ByRequestPart: byPart,
+		RecentEvents:  recent,
+		PromptCache:   DefaultCodexPromptCacheRecorder().Snapshot(),
+		CodexChain:    DefaultCodexChainRecorder().Snapshot(),
 	}
+}
+
+func flattenRTKRequestParts(groups [][]RTKRequestPartStats) []RTKRequestPartStats {
+	if len(groups) == 0 {
+		return nil
+	}
+	var parts []RTKRequestPartStats
+	for _, group := range groups {
+		for _, part := range group {
+			if strings.TrimSpace(part.Part) == "" || part.Bytes <= 0 {
+				continue
+			}
+			if part.Count <= 0 {
+				part.Count = 1
+			}
+			parts = append(parts, part)
+		}
+	}
+	sortRTKRequestPartStats(parts)
+	return parts
 }
 
 func rtkCompressionFilters(hits []tokensaver.Hit) []string {
@@ -548,6 +599,19 @@ func sortRTKCompressionMissStats(stats []RTKCompressionMissStats) {
 		j := i - 1
 		for j >= 0 && (stats[j].Bytes < current.Bytes ||
 			(stats[j].Bytes == current.Bytes && stats[j].Reason > current.Reason)) {
+			stats[j+1] = stats[j]
+			j--
+		}
+		stats[j+1] = current
+	}
+}
+
+func sortRTKRequestPartStats(stats []RTKRequestPartStats) {
+	for i := 1; i < len(stats); i++ {
+		current := stats[i]
+		j := i - 1
+		for j >= 0 && (stats[j].Bytes < current.Bytes ||
+			(stats[j].Bytes == current.Bytes && stats[j].Part > current.Part)) {
 			stats[j+1] = stats[j]
 			j--
 		}

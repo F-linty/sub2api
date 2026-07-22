@@ -90,6 +90,48 @@ func TestOpenAITokenSaverReferenceScopeUsesAccountModelAndHashedCacheKey(t *test
 	}
 }
 
+func TestAnalyzeOpenAITokenSaverRequestParts(t *testing.T) {
+	body := []byte(`{
+		"model": "gpt-5.5",
+		"prompt_cache_key": "cache-key",
+		"store": false,
+		"tools": [{"type":"function","name":"shell"}],
+		"instructions": "system text",
+		"input": [
+			{"type":"message","role":"user","content":"hello"},
+			{"type":"function_call","name":"shell","arguments":"{}"},
+			{"type":"function_call_output","call_id":"1","output":"long shell output"}
+		]
+	}`)
+
+	parts := analyzeOpenAITokenSaverRequestParts(body)
+	byPart := make(map[string]RTKRequestPartStats)
+	for _, part := range parts {
+		byPart[part.Part] = part
+	}
+
+	for _, name := range []string{
+		"input/tool_output",
+		"input/tool_output_meta",
+		"input/message",
+		"input/tool_call",
+		"tools/schema",
+		"instructions",
+		"request/options",
+		"json/overhead",
+	} {
+		if byPart[name].Bytes <= 0 {
+			t.Fatalf("expected %s bytes in parts: %#v", name, parts)
+		}
+	}
+	if byPart["input/tool_output"].Count != 1 {
+		t.Fatalf("expected one tool output, got %#v", byPart["input/tool_output"])
+	}
+	if byPart["request/options"].Count != 3 {
+		t.Fatalf("expected three request options, got %#v", byPart["request/options"])
+	}
+}
+
 func tokenSaverGinContext() *gin.Context {
 	gin.SetMode(gin.TestMode)
 	w := httptest.NewRecorder()

@@ -16,6 +16,9 @@ func TestRTKCompressionRecorderSnapshot(t *testing.T) {
 			{Path: "$.input[0].output", Filter: "file_list", Before: 700, After: 200},
 			{Path: "$.input[1].output", Filter: "build_log", Before: 300, After: 150},
 		},
+	}, []RTKRequestPartStats{
+		{Part: "input/tool_output", Count: 2, Bytes: 800},
+		{Part: "tools/schema", Count: 1, Bytes: 120},
 	})
 
 	snapshot := recorder.Snapshot(true, 2048, 524288)
@@ -34,6 +37,12 @@ func TestRTKCompressionRecorderSnapshot(t *testing.T) {
 	}
 	if len(snapshot.RecentEvents[0].HitStats) != 2 {
 		t.Fatalf("expected hit stats in recent event: %#v", snapshot.RecentEvents[0])
+	}
+	if len(snapshot.ByRequestPart) != 2 || snapshot.ByRequestPart[0].Part != "input/tool_output" {
+		t.Fatalf("unexpected request part stats: %#v", snapshot.ByRequestPart)
+	}
+	if len(snapshot.RecentEvents[0].RequestParts) != 2 {
+		t.Fatalf("expected request parts in recent event: %#v", snapshot.RecentEvents[0])
 	}
 }
 

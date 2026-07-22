@@ -114,6 +114,38 @@
 
       <div class="card overflow-hidden">
         <div class="border-b border-gray-100 px-5 py-4 dark:border-dark-700">
+          <h2 class="text-base font-semibold text-gray-950 dark:text-white">{{ t('admin.rtkCompression.requestParts.title') }}</h2>
+          <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ t('admin.rtkCompression.requestParts.description') }}</p>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="min-w-full divide-y divide-gray-100 text-sm dark:divide-dark-700">
+            <thead class="bg-gray-50 text-left text-xs uppercase tracking-wide text-gray-500 dark:bg-dark-800/70 dark:text-gray-400">
+              <tr>
+                <th class="px-5 py-3">{{ t('admin.rtkCompression.requestParts.part') }}</th>
+                <th class="px-5 py-3 text-right">{{ t('admin.rtkCompression.requestParts.count') }}</th>
+                <th class="px-5 py-3 text-right">{{ t('admin.rtkCompression.requestParts.bytes') }}</th>
+                <th class="px-5 py-3 text-right">{{ t('admin.rtkCompression.requestParts.ratio') }}</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100 dark:divide-dark-700">
+              <tr v-for="item in requestPartRows" :key="item.part" class="text-gray-700 dark:text-gray-200">
+                <td class="px-5 py-3 font-medium">{{ formatRequestPart(item.part) }}</td>
+                <td class="px-5 py-3 text-right">{{ formatNumber(item.count) }}</td>
+                <td class="px-5 py-3 text-right">{{ formatBytes(item.bytes) }}</td>
+                <td class="px-5 py-3 text-right">{{ formatPercent(safeRatio(item.bytes, snapshot?.before ?? 0)) }}</td>
+              </tr>
+              <tr v-if="requestPartRows.length === 0">
+                <td colspan="4" class="px-5 py-8 text-center text-sm text-gray-500 dark:text-gray-400">
+                  {{ t('admin.rtkCompression.requestParts.empty') }}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card overflow-hidden">
+        <div class="border-b border-gray-100 px-5 py-4 dark:border-dark-700">
           <h2 class="text-base font-semibold text-gray-950 dark:text-white">{{ t('admin.rtkCompression.promptCache.title') }}</h2>
           <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ t('admin.rtkCompression.promptCache.description') }}</p>
         </div>
@@ -456,6 +488,7 @@ let refreshTimer: number | undefined
 
 const filterRows = computed(() => snapshot.value?.by_filter ?? [])
 const missedRows = computed(() => snapshot.value?.by_miss_reason ?? [])
+const requestPartRows = computed(() => snapshot.value?.by_request_part ?? [])
 const recentEvents = computed(() => snapshot.value?.recent_events ?? [])
 const showCompressionEventDetails = computed(() => selectedCompressionEvent.value !== null)
 const promptCache = computed(() => snapshot.value?.prompt_cache)
@@ -575,6 +608,10 @@ function safeRatio(saved: number, before: number): number {
 
 function formatMissReason(reason: string): string {
   return t(`admin.rtkCompression.missReasons.${reason}`, reason)
+}
+
+function formatRequestPart(part: string): string {
+  return t(`admin.rtkCompression.requestPartNames.${part}`, part)
 }
 
 function formatPromptCacheOutcome(outcome: string): string {
