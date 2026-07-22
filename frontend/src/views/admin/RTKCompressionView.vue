@@ -398,6 +398,7 @@
                       <th class="px-4 py-3 text-right">{{ t('admin.rtkCompression.filters.before') }}</th>
                       <th class="px-4 py-3 text-right">{{ t('admin.rtkCompression.filters.after') }}</th>
                       <th class="px-4 py-3 text-right">{{ t('admin.rtkCompression.filters.saved') }}</th>
+                      <th class="px-4 py-3">{{ t('admin.rtkCompression.eventDetails.reference') }}</th>
                       <th class="px-4 py-3">{{ t('admin.rtkCompression.eventDetails.sample') }}</th>
                     </tr>
                   </thead>
@@ -413,10 +414,15 @@
                       <td class="whitespace-nowrap px-4 py-3 text-right text-gray-700 dark:text-gray-200">{{ formatBytes(row.before) }}</td>
                       <td class="whitespace-nowrap px-4 py-3 text-right text-gray-700 dark:text-gray-200">{{ row.after != null ? formatBytes(row.after) : '-' }}</td>
                       <td class="whitespace-nowrap px-4 py-3 text-right text-green-600 dark:text-green-400">{{ row.bytesSaved != null ? formatBytes(row.bytesSaved) : '-' }}</td>
+                      <td class="max-w-[300px] px-4 py-3 font-mono text-xs text-gray-500 dark:text-gray-400">
+                        <div v-if="row.referenceHash">hash: {{ row.referenceHash }}</div>
+                        <div v-if="row.referencePath" class="truncate" :title="row.referencePath">first: {{ row.referencePath }}</div>
+                        <span v-if="!row.referenceHash && !row.referencePath">-</span>
+                      </td>
                       <td class="max-w-[360px] truncate px-4 py-3 text-xs text-gray-500 dark:text-gray-400" :title="row.sample || ''">{{ row.sample || '-' }}</td>
                     </tr>
                     <tr v-if="selectedCompressionEventRows.length === 0">
-                      <td colspan="7" class="px-5 py-8 text-center text-sm text-gray-500 dark:text-gray-400">
+                      <td colspan="8" class="px-5 py-8 text-center text-sm text-gray-500 dark:text-gray-400">
                         {{ t('admin.rtkCompression.eventDetails.empty') }}
                       </td>
                     </tr>
@@ -470,6 +476,8 @@ const selectedCompressionEventRows = computed(() => {
     before: hit.before,
     after: hit.after,
     bytesSaved: hit.bytes_saved,
+    referenceHash: hit.reference_hash || '',
+    referencePath: hit.reference_path || '',
     sample: '',
   }))
   const misses = (event.miss_stats ?? []).map((miss, index) => ({
@@ -480,6 +488,8 @@ const selectedCompressionEventRows = computed(() => {
     before: miss.before,
     after: null,
     bytesSaved: null,
+    referenceHash: '',
+    referencePath: '',
     sample: miss.sample || '',
   }))
   return [...hits, ...misses]

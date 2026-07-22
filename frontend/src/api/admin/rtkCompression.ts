@@ -14,6 +14,8 @@ export interface RTKCompressionHitStat {
   before: number
   after: number
   bytes_saved: number
+  reference_hash?: string
+  reference_path?: string
 }
 
 export interface RTKCompressionMissReasonStats {

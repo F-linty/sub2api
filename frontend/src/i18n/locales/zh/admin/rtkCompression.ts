@@ -122,6 +122,7 @@ export default {
       title: '压缩事件明细',
       type: '类型',
       path: '路径',
+      reference: '引用',
       sample: '样本',
       hit: '命中',
       miss: '未压缩',

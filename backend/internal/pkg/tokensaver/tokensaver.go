@@ -2,6 +2,7 @@ package tokensaver
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"path"
@@ -11,9 +12,10 @@ import (
 )
 
 const (
-	defaultMinBytes = 2048
-	defaultMaxBytes = 512 << 10
-	markerPrefix    = "[sub2api token saver:"
+	defaultMinBytes   = 2048
+	defaultMaxBytes   = 512 << 10
+	markerPrefix      = "[sub2api token saver:"
+	referenceMinBytes = 768
 )
 
 // Options controls conservative tool-output compression.
@@ -24,10 +26,12 @@ type Options struct {
 
 // Hit describes one compressed JSON field.
 type Hit struct {
-	Path   string
-	Filter string
-	Before int
-	After  int
+	Path          string
+	Filter        string
+	Before        int
+	After         int
+	ReferenceHash string
+	ReferencePath string
 }
 
 // Miss describes an eligible tool-output field that was not compressed.
@@ -63,6 +67,7 @@ func CompressJSON(body []byte, opts Options) (Result, error) {
 	}
 
 	hits, misses := mutateKnownToolOutputs(root, opts)
+	hits = append(hits, dedupeRepeatedToolOutputs(root, opts)...)
 	result.Misses = misses
 	if len(hits) == 0 {
 		return result, nil
@@ -135,6 +140,136 @@ func mutateKnownToolOutputs(root any, opts Options) ([]Hit, []Miss) {
 	}
 
 	return hits, misses
+}
+
+type toolStringField struct {
+	obj  map[string]any
+	key  string
+	path string
+}
+
+func collectKnownToolStringFields(root any) []toolStringField {
+	obj, ok := root.(map[string]any)
+	if !ok {
+		return nil
+	}
+	var fields []toolStringField
+	if messages, ok := obj["messages"].([]any); ok {
+		for i, raw := range messages {
+			msg, ok := raw.(map[string]any)
+			if !ok || isErrorToolResult(msg) {
+				continue
+			}
+			if role, _ := msg["role"].(string); role == "tool" {
+				fields = append(fields, toolStringField{obj: msg, key: "content", path: fmt.Sprintf("$.messages[%d].content", i)})
+			}
+			fields = append(fields, collectAnthropicContentStringFields(msg["content"], fmt.Sprintf("$.messages[%d].content", i))...)
+		}
+	}
+	if input, ok := obj["input"].([]any); ok {
+		for i, raw := range input {
+			item, ok := raw.(map[string]any)
+			if !ok || isErrorToolResult(item) {
+				continue
+			}
+			if typ, _ := item["type"].(string); typ == "function_call_output" {
+				fields = append(fields, toolStringField{obj: item, key: "output", path: fmt.Sprintf("$.input[%d].output", i)})
+			}
+			fields = append(fields, collectAnthropicContentStringFields(item["content"], fmt.Sprintf("$.input[%d].content", i))...)
+		}
+	}
+	return fields
+}
+
+func collectAnthropicContentStringFields(raw any, basePath string) []toolStringField {
+	parts, ok := raw.([]any)
+	if !ok {
+		return nil
+	}
+	var fields []toolStringField
+	for i, rawPart := range parts {
+		part, ok := rawPart.(map[string]any)
+		if !ok || isErrorToolResult(part) {
+			continue
+		}
+		if typ, _ := part["type"].(string); typ != "tool_result" {
+			continue
+		}
+		partPath := fmt.Sprintf("%s[%d]", basePath, i)
+		fields = append(fields, toolStringField{obj: part, key: "content", path: partPath + ".content"})
+		if nested, ok := part["content"].([]any); ok {
+			for j, rawNested := range nested {
+				textPart, ok := rawNested.(map[string]any)
+				if !ok {
+					continue
+				}
+				if typ, _ := textPart["type"].(string); typ == "" || typ == "text" {
+					fields = append(fields, toolStringField{obj: textPart, key: "text", path: fmt.Sprintf("%s.content[%d].text", partPath, j)})
+				}
+			}
+		}
+	}
+	return fields
+}
+
+func dedupeRepeatedToolOutputs(root any, opts Options) []Hit {
+	fields := collectKnownToolStringFields(root)
+	if len(fields) < 2 {
+		return nil
+	}
+	minBytes := opts.MinBytes
+	if minBytes <= 0 || minBytes > referenceMinBytes {
+		minBytes = referenceMinBytes
+	}
+	type firstSeen struct {
+		path string
+		hash string
+	}
+	seen := make(map[string]firstSeen)
+	var hits []Hit
+	for _, field := range fields {
+		value, ok := field.obj[field.key].(string)
+		if !ok || len(value) < minBytes || strings.Contains(value, "duplicate reference") {
+			continue
+		}
+		canonical := canonicalReferenceText(value)
+		if len(canonical) < minBytes {
+			continue
+		}
+		hash := shortContentHash(canonical)
+		if first, ok := seen[canonical]; ok {
+			replacement := wrapDuplicateReference(first.hash, len(value), first.path)
+			if len(replacement) >= len(value) {
+				continue
+			}
+			field.obj[field.key] = replacement
+			hits = append(hits, Hit{
+				Path:          field.path,
+				Filter:        "duplicate_reference",
+				Before:        len(value),
+				After:         len(replacement),
+				ReferenceHash: first.hash,
+				ReferencePath: first.path,
+			})
+			continue
+		}
+		seen[canonical] = firstSeen{path: field.path, hash: hash}
+	}
+	return hits
+}
+
+func canonicalReferenceText(value string) string {
+	value = strings.ReplaceAll(value, "\r\n", "\n")
+	return strings.TrimRight(value, "\n")
+}
+
+func shortContentHash(value string) string {
+	sum := sha256.Sum256([]byte(value))
+	return fmt.Sprintf("%x", sum[:8])
+}
+
+func wrapDuplicateReference(hash string, before int, firstPath string) string {
+	return fmt.Sprintf("%s duplicate reference; hash %s; original %d bytes; first %s]\nSame tool output as %s.", markerPrefix, hash, before, firstPath, firstPath)
 }
 
 func mutateAnthropicContent(raw any, path string, opts Options) ([]Hit, []Miss) {

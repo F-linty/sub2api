@@ -122,6 +122,7 @@ export default {
       title: 'Compression Event Details',
       type: 'Type',
       path: 'Path',
+      reference: 'Reference',
       sample: 'Sample',
       hit: 'Hit',
       miss: 'Miss',

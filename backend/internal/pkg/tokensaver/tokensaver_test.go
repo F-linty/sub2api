@@ -105,6 +105,55 @@ func TestCompressJSONSkipsAlreadyCompressedMarker(t *testing.T) {
 	}
 }
 
+func TestCompressJSONReferencesDuplicateCompressedHistory(t *testing.T) {
+	output := "[sub2api token saver: compressed shell_output/build_log; original 9999 bytes]\n" + strings.Repeat("compiled package with useful summary\n", 80)
+	body := fmt.Sprintf(`{"input":[{"type":"function_call_output","output":%q},{"type":"function_call_output","output":%q}]}`, output, output)
+
+	result, err := CompressJSON([]byte(body), Options{MinBytes: 2048})
+	if err != nil {
+		t.Fatalf("CompressJSON returned error: %v", err)
+	}
+	if !result.Changed {
+		t.Fatalf("expected duplicate compressed history to be referenced")
+	}
+	if len(result.Hits) != 1 || result.Hits[0].Filter != "duplicate_reference" {
+		t.Fatalf("unexpected hits: %#v", result.Hits)
+	}
+	if result.Hits[0].ReferenceHash == "" || result.Hits[0].ReferencePath != "$.input[0].output" {
+		t.Fatalf("missing reference metadata: %#v", result.Hits[0])
+	}
+	var decoded struct {
+		Input []struct {
+			Output string `json:"output"`
+		} `json:"input"`
+	}
+	if err := json.Unmarshal(result.Body, &decoded); err != nil {
+		t.Fatalf("compressed body is invalid JSON: %v", err)
+	}
+	if !strings.Contains(decoded.Input[1].Output, "duplicate reference") || !strings.Contains(decoded.Input[1].Output, "$.input[0].output") {
+		t.Fatalf("expected duplicate reference, got %q", decoded.Input[1].Output)
+	}
+}
+
+func TestCompressJSONCompressesThenReferencesDuplicateToolOutput(t *testing.T) {
+	output := shellOutput(largeCompilingLog())
+	body := fmt.Sprintf(`{"messages":[{"role":"tool","content":%q},{"role":"tool","content":%q}]}`, output, output)
+
+	result, err := CompressJSON([]byte(body), Options{MinBytes: 64})
+	if err != nil {
+		t.Fatalf("CompressJSON returned error: %v", err)
+	}
+	if !result.Changed {
+		t.Fatalf("expected duplicated output to be compressed and referenced")
+	}
+	if len(result.Hits) != 3 {
+		t.Fatalf("expected two compression hits plus one reference hit, got %#v", result.Hits)
+	}
+	if result.Hits[2].Filter != "duplicate_reference" || result.Hits[2].ReferencePath != "$.messages[0].content" {
+		t.Fatalf("unexpected reference hit: %#v", result.Hits[2])
+	}
+}
+
 func TestCompressJSONGitStatus(t *testing.T) {
 	body := fmt.Sprintf(`{"input":[{"type":"function_call_output","output":%q}]}`, largeGitStatus())
 

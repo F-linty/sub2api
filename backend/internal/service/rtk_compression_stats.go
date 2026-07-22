@@ -35,11 +35,13 @@ type RTKCompressionFilterStats struct {
 }
 
 type RTKCompressionHitStat struct {
-	Path       string `json:"path"`
-	Filter     string `json:"filter"`
-	Before     int    `json:"before"`
-	After      int    `json:"after"`
-	BytesSaved int    `json:"bytes_saved"`
+	Path          string `json:"path"`
+	Filter        string `json:"filter"`
+	Before        int    `json:"before"`
+	After         int    `json:"after"`
+	BytesSaved    int    `json:"bytes_saved"`
+	ReferenceHash string `json:"reference_hash,omitempty"`
+	ReferencePath string `json:"reference_path,omitempty"`
 }
 
 type RTKCompressionMissStats struct {
@@ -499,11 +501,13 @@ func rtkCompressionHitStats(hits []tokensaver.Hit) []RTKCompressionHitStat {
 	stats := make([]RTKCompressionHitStat, 0, len(hits))
 	for _, hit := range hits {
 		stats = append(stats, RTKCompressionHitStat{
-			Path:       hit.Path,
-			Filter:     hit.Filter,
-			Before:     hit.Before,
-			After:      hit.After,
-			BytesSaved: hit.Before - hit.After,
+			Path:          hit.Path,
+			Filter:        hit.Filter,
+			Before:        hit.Before,
+			After:         hit.After,
+			BytesSaved:    hit.Before - hit.After,
+			ReferenceHash: hit.ReferenceHash,
+			ReferencePath: hit.ReferencePath,
 		})
 	}
 	return stats
