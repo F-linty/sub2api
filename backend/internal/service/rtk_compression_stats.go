@@ -79,6 +79,7 @@ type RTKCompressionEvent struct {
 
 type RTKCompressionSnapshot struct {
 	Enabled       bool                        `json:"enabled"`
+	Strategy      string                      `json:"strategy"`
 	MinBytes      int                         `json:"min_bytes"`
 	MaxBytes      int                         `json:"max_bytes"`
 	OutputStyle   RTKOutputStyleConfig        `json:"output_style"`
@@ -470,9 +471,9 @@ func (r *RTKCompressionRecorder) Record(accountID int64, result tokensaver.Resul
 	}
 }
 
-func (r *RTKCompressionRecorder) Snapshot(enabled bool, minBytes, maxBytes int, outputStyle RTKOutputStyleConfig) RTKCompressionSnapshot {
+func (r *RTKCompressionRecorder) Snapshot(enabled bool, strategy string, minBytes, maxBytes int, outputStyle RTKOutputStyleConfig) RTKCompressionSnapshot {
 	if r == nil {
-		return RTKCompressionSnapshot{Enabled: enabled, MinBytes: minBytes, MaxBytes: maxBytes, OutputStyle: outputStyle}
+		return RTKCompressionSnapshot{Enabled: enabled, Strategy: strategy, MinBytes: minBytes, MaxBytes: maxBytes, OutputStyle: outputStyle}
 	}
 	r.mu.RLock()
 	defer r.mu.RUnlock()
@@ -499,6 +500,7 @@ func (r *RTKCompressionRecorder) Snapshot(enabled bool, minBytes, maxBytes int, 
 	}
 	return RTKCompressionSnapshot{
 		Enabled:       enabled,
+		Strategy:      strategy,
 		MinBytes:      minBytes,
 		MaxBytes:      maxBytes,
 		OutputStyle:   outputStyle,

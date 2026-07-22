@@ -31,7 +31,19 @@
               {{ snapshot?.enabled ? t('admin.rtkCompression.enabled') : t('admin.rtkCompression.disabled') }}
             </p>
           </div>
-          <div class="grid grid-cols-1 gap-3 text-sm sm:grid-cols-3">
+          <div class="grid grid-cols-1 gap-3 text-sm sm:grid-cols-4">
+            <div>
+              <span class="text-gray-500 dark:text-gray-400">{{ t('admin.rtkCompression.strategy') }}</span>
+              <select
+                class="mt-1 block w-full rounded-lg border-gray-300 text-sm dark:border-dark-600 dark:bg-dark-800 dark:text-gray-100"
+                :value="rtkStrategy"
+                :disabled="savingConfig"
+                @change="changeRTKStrategy(($event.target as HTMLSelectElement).value)"
+              >
+                <option value="9router">{{ t('admin.rtkCompression.strategies.9router') }}</option>
+                <option value="conservative">{{ t('admin.rtkCompression.strategies.conservative') }}</option>
+              </select>
+            </div>
             <div>
               <span class="text-gray-500 dark:text-gray-400">{{ t('admin.rtkCompression.minBytes') }}</span>
               <p class="font-medium text-gray-950 dark:text-white">{{ formatBytes(snapshot?.min_bytes ?? 0) }}</p>
@@ -528,6 +540,7 @@ const promptCacheEvents = computed(() => promptCache.value?.recent_events ?? [])
 const codexChain = computed(() => snapshot.value?.codex_chain)
 const codexChainTransports = computed(() => codexChain.value?.by_transport ?? [])
 const codexChainEvents = computed(() => codexChain.value?.recent_events ?? [])
+const rtkStrategy = computed(() => snapshot.value?.strategy || '9router')
 const outputStyleEnabled = computed(() => snapshot.value?.output_style?.enabled === true)
 const outputStyleLevel = computed(() => snapshot.value?.output_style?.level || 'concise')
 const selectedCompressionEventRows = computed(() => {
@@ -607,6 +620,18 @@ async function saveOutputStyle(enabled: boolean, level: string) {
     snapshot.value = await adminAPI.rtkCompression.updateConfig({
       output_style: { enabled, level },
     })
+  } catch (error: any) {
+    errorMessage.value = error?.message || 'Failed to save RTK compression config'
+  } finally {
+    savingConfig.value = false
+  }
+}
+
+async function changeRTKStrategy(strategy: string) {
+  savingConfig.value = true
+  errorMessage.value = ''
+  try {
+    snapshot.value = await adminAPI.rtkCompression.updateConfig({ strategy })
   } catch (error: any) {
     errorMessage.value = error?.message || 'Failed to save RTK compression config'
   } finally {

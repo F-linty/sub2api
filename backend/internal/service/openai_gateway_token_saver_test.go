@@ -55,6 +55,21 @@ func TestMaybeApplyOpenAITokenSaverCompressesWhenEnabled(t *testing.T) {
 	}
 }
 
+func TestMaybeApplyOpenAITokenSaverDefaultsTo9RouterStrategy(t *testing.T) {
+	svc := &OpenAIGatewayService{cfg: &config.Config{
+		Gateway: config.GatewayConfig{
+			TokenSaver: config.GatewayTokenSaverConfig{Enabled: true},
+		},
+	}}
+	body := []byte(fmt.Sprintf(`{"messages":[{"role":"tool","content":%q}]}`, tokenSaverSmallGrepOutput()))
+
+	got := svc.maybeApplyOpenAITokenSaver(nil, &Account{ID: 123}, body)
+
+	if string(got) == string(body) || !strings.Contains(string(got), "compressed grep") {
+		t.Fatalf("expected default token saver strategy to compress 9router-sized output: %s", string(got))
+	}
+}
+
 func TestMaybeApplyOpenAIOutputStyleHintWhenEnabled(t *testing.T) {
 	body := []byte(`{"instructions":"existing","input":[{"type":"message","role":"user","content":"hello"}]}`)
 
@@ -213,4 +228,12 @@ func tokenSaverRequestBody() []byte {
 		}
 	}
 	return []byte(fmt.Sprintf(`{"input":[{"type":"function_call_output","output":%q}]}`, b.String()))
+}
+
+func tokenSaverSmallGrepOutput() string {
+	var b strings.Builder
+	for i := 0; i < 12; i++ {
+		fmt.Fprintf(&b, "src/file.go:%d: compact but repetitive match line %03d\n", i+1, i)
+	}
+	return b.String()
 }

@@ -107,6 +107,11 @@ func compressShellOutput(text string) (string, bool) {
 }
 
 func compressShellOutputNamed(text string) (string, string, bool) {
+	return compressShellOutputNamedWithOptions(text, Options{Strategy: StrategyConservative})
+}
+
+func compressShellOutputNamedWithOptions(text string, opts Options) (string, string, bool) {
+	opts = normalizeOptions(opts)
 	meta, output, ok := splitShellOutput(text)
 	if !ok {
 		return "", "", false
@@ -116,7 +121,7 @@ func compressShellOutputNamed(text string) (string, string, bool) {
 		return strings.Join(append(meta, "Output: <empty>"), "\n"), "shell_output/empty", true
 	}
 
-	if compressed, filter, ok := compressShellOutputBody(output); ok {
+	if compressed, filter, ok := compressShellOutputBodyWithOptions(output, opts); ok {
 		out := append([]string{}, meta...)
 		out = append(out, fmt.Sprintf("Output: compressed via %s", filter), compressed)
 		return strings.Join(out, "\n"), "shell_output/" + filter, true
@@ -170,24 +175,12 @@ func splitShellOutput(text string) ([]string, string, bool) {
 }
 
 func compressShellOutputBody(output string) (string, string, bool) {
-	candidates := []struct {
-		name string
-		fn   func(string) (string, bool)
-	}{
-		{"git_log", compressGitLog},
-		{"git_diff", compressGitDiff},
-		{"git_status", compressGitStatus},
-		{"build_log", compressBuildLog},
-		{"grep", compressGrep},
-		{"find", compressFindOutput},
-		{"tree", compressTreeOutput},
-		{"ls", compressLSOutput},
-		{"search_list", compressSearchList},
-		{"read_numbered", compressReadNumbered},
-		{"dedup_log", compressDedupLog},
-		{"smart_truncate", compressSmartTruncate},
-		{"file_list", compressFileList},
-	}
+	return compressShellOutputBodyWithOptions(output, Options{Strategy: StrategyConservative})
+}
+
+func compressShellOutputBodyWithOptions(output string, opts Options) (string, string, bool) {
+	opts = normalizeOptions(opts)
+	candidates := compressionCandidates(opts)
 	for _, candidate := range candidates {
 		body, ok := candidate.fn(output)
 		if ok && len(body) < len(output) {

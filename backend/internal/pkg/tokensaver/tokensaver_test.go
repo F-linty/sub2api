@@ -33,6 +33,72 @@ func TestCompressJSONResponsesFunctionCallOutput(t *testing.T) {
 	}
 }
 
+func TestCompressJSON9RouterStrategyCompressesSmallToolOutput(t *testing.T) {
+	body := fmt.Sprintf(`{"messages":[{"role":"tool","tool_call_id":"c1","content":%q}]}`, smallGrepOutput())
+
+	result, err := CompressJSON([]byte(body), Options{Strategy: Strategy9Router})
+	if err != nil {
+		t.Fatalf("CompressJSON returned error: %v", err)
+	}
+	if !result.Changed || len(result.Hits) != 1 || result.Hits[0].Filter != "grep" {
+		t.Fatalf("expected 9router strategy to compress 500B+ grep output, got changed=%v hits=%#v", result.Changed, result.Hits)
+	}
+}
+
+func TestCompressJSON9RouterStrategyCompressesResponsesOutputArray(t *testing.T) {
+	body := fmt.Sprintf(`{"input":[{"type":"function_call_output","call_id":"c1","output":[{"type":"input_text","text":%q}]}]}`, largeCompilingLog())
+
+	result, err := CompressJSON([]byte(body), Options{Strategy: Strategy9Router, MinBytes: 64})
+	if err != nil {
+		t.Fatalf("CompressJSON returned error: %v", err)
+	}
+	if !result.Changed || len(result.Hits) != 1 || result.Hits[0].Path != "$.input[0].output[0].text" || result.Hits[0].Filter != "build-output" {
+		t.Fatalf("unexpected hits: %#v changed=%v", result.Hits, result.Changed)
+	}
+}
+
+func TestCompressJSON9RouterStrategyCompressesToolContentArray(t *testing.T) {
+	body := fmt.Sprintf(`{"messages":[{"role":"tool","tool_call_id":"c1","content":[{"type":"text","text":%q}]}]}`, largeCompilingLog())
+
+	result, err := CompressJSON([]byte(body), Options{Strategy: Strategy9Router, MinBytes: 64})
+	if err != nil {
+		t.Fatalf("CompressJSON returned error: %v", err)
+	}
+	if !result.Changed || len(result.Hits) != 1 || result.Hits[0].Path != "$.messages[0].content[0].text" || result.Hits[0].Filter != "build-output" {
+		t.Fatalf("unexpected hits: %#v changed=%v", result.Hits, result.Changed)
+	}
+}
+
+func TestCompressJSON9RouterStrategyUsesAggressiveBuildOutput(t *testing.T) {
+	body := fmt.Sprintf(`{"messages":[{"role":"tool","content":%q}]}`, largeMixedBuildOutput())
+
+	result, err := CompressJSON([]byte(body), Options{Strategy: Strategy9Router, MinBytes: 64})
+	if err != nil {
+		t.Fatalf("CompressJSON returned error: %v", err)
+	}
+	if !result.Changed || len(result.Hits) != 1 || result.Hits[0].Filter != "build-output" {
+		t.Fatalf("unexpected result: changed=%v hits=%#v", result.Changed, result.Hits)
+	}
+	if result.Hits[0].After >= result.Hits[0].Before/5 {
+		t.Fatalf("expected 9router build output to shrink aggressively: %#v", result.Hits[0])
+	}
+	var decoded struct {
+		Messages []struct {
+			Content string `json:"content"`
+		} `json:"messages"`
+	}
+	if err := json.Unmarshal(result.Body, &decoded); err != nil {
+		t.Fatalf("compressed body is invalid JSON: %v", err)
+	}
+	output := decoded.Messages[0].Content
+	if strings.Contains(output, "Downloading package_020") || strings.Contains(output, "Compiling crate_020") {
+		t.Fatalf("expected verbose build progress to be stripped, got %q", output)
+	}
+	if !strings.Contains(output, "Compiled ") || !strings.Contains(output, "Downloaded ") || !strings.Contains(output, "npm warn deprecated") {
+		t.Fatalf("expected build summary to be preserved, got %q", output)
+	}
+}
+
 func TestCompressJSONChatToolMessage(t *testing.T) {
 	body := fmt.Sprintf(`{"messages":[{"role":"tool","tool_call_id":"c1","content":%q}]}`, largeGrepOutput())
 
@@ -443,6 +509,14 @@ func largeGrepOutput() string {
 	return b.String()
 }
 
+func smallGrepOutput() string {
+	var b strings.Builder
+	for i := 0; i < 12; i++ {
+		fmt.Fprintf(&b, "src/file.go:%d: compact but repetitive match line %03d\n", i+1, i)
+	}
+	return b.String()
+}
+
 func largeBuildLog() string {
 	var b strings.Builder
 	for i := 0; i < 140; i++ {
@@ -452,6 +526,25 @@ func largeBuildLog() string {
 		}
 		fmt.Fprintf(&b, "compile step %d completed with verbose diagnostic output\n", i)
 	}
+	return b.String()
+}
+
+func largeMixedBuildOutput() string {
+	var b strings.Builder
+	for i := 0; i < 60; i++ {
+		fmt.Fprintf(&b, "Downloading package_%03d v1.2.3\n", i)
+	}
+	for i := 0; i < 80; i++ {
+		fmt.Fprintf(&b, "   Compiling crate_%03d v0.1.0\n", i)
+	}
+	for i := 0; i < 12; i++ {
+		fmt.Fprintf(&b, "npm warn deprecated package-%03d@1.0.0: legacy package\n", i)
+	}
+	for i := 0; i < 9; i++ {
+		fmt.Fprintf(&b, "npm warn optional warning %03d\n", i)
+	}
+	b.WriteString("error: failed to compile crate_alpha\n")
+	b.WriteString("    Finished release [optimized] target(s) in 3m 12s\n")
 	return b.String()
 }
 

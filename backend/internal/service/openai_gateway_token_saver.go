@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/Wei-Shaw/sub2api/internal/config"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/logger"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/tokensaver"
 	"github.com/gin-gonic/gin"
@@ -24,10 +25,13 @@ func (s *OpenAIGatewayService) maybeApplyOpenAITokenSaver(c *gin.Context, accoun
 
 	body = maybeApplyOpenAIOutputStyleHint(body, s.cfg.Gateway.TokenSaver.OutputStyleEnabled, s.cfg.Gateway.TokenSaver.OutputStyleLevel)
 
+	opts := openAITokenSaverOptions(s.cfg.Gateway.TokenSaver, openAITokenSaverReferenceScope(c, account, body))
 	result, err := tokensaver.CompressJSON(body, tokensaver.Options{
-		MinBytes:       s.cfg.Gateway.TokenSaver.MinBytes,
-		MaxBytes:       s.cfg.Gateway.TokenSaver.MaxBytes,
-		ReferenceScope: openAITokenSaverReferenceScope(c, account, body),
+		MinBytes:            opts.MinBytes,
+		MaxBytes:            opts.MaxBytes,
+		Strategy:            opts.Strategy,
+		ReferenceScope:      opts.ReferenceScope,
+		ReferenceKeepRecent: opts.ReferenceKeepRecent,
 	})
 	if err != nil {
 		return body
@@ -61,6 +65,25 @@ func (s *OpenAIGatewayService) maybeApplyOpenAITokenSaver(c *gin.Context, accoun
 	}
 
 	return result.Body
+}
+
+func openAITokenSaverOptions(cfg config.GatewayTokenSaverConfig, referenceScope string) tokensaver.Options {
+	strategy := strings.ToLower(strings.TrimSpace(cfg.Strategy))
+	if strategy == "" {
+		strategy = tokensaver.Strategy9Router
+	}
+	minBytes := cfg.MinBytes
+	maxBytes := cfg.MaxBytes
+	if strategy == tokensaver.Strategy9Router {
+		minBytes = 500
+		maxBytes = 10 << 20
+	}
+	return tokensaver.Options{
+		MinBytes:       minBytes,
+		MaxBytes:       maxBytes,
+		Strategy:       strategy,
+		ReferenceScope: referenceScope,
+	}
 }
 
 const openAIOutputStyleMarker = "[sub2api output style]"

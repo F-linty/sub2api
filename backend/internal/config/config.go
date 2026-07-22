@@ -738,6 +738,8 @@ type ImageConcurrencyConfig struct {
 type GatewayTokenSaverConfig struct {
 	// Enabled: 是否启用 OpenAI HTTP 上游请求的工具输出压缩，默认关闭以保持现有行为
 	Enabled bool `mapstructure:"enabled"`
+	// Strategy: 工具输出压缩策略：9router/conservative；空值按 9router 兼容
+	Strategy string `mapstructure:"strategy"`
 	// MinBytes: 单个工具输出达到该字节数才尝试压缩
 	MinBytes int `mapstructure:"min_bytes"`
 	// MaxBytes: 单个工具输出超过该字节数不在热路径处理，避免放大 CPU/内存风险
@@ -2042,6 +2044,7 @@ func setDefaults() {
 	viper.SetDefault("gateway.image_concurrency.wait_timeout_seconds", 30)
 	viper.SetDefault("gateway.image_concurrency.max_waiting_requests", 100)
 	viper.SetDefault("gateway.token_saver.enabled", false)
+	viper.SetDefault("gateway.token_saver.strategy", "9router")
 	viper.SetDefault("gateway.token_saver.min_bytes", 2048)
 	viper.SetDefault("gateway.token_saver.max_bytes", 512*1024)
 	viper.SetDefault("gateway.token_saver.log_enabled", true)
@@ -2710,6 +2713,11 @@ func (c *Config) Validate() error {
 	if c.Gateway.TokenSaver.MinBytes > 0 && c.Gateway.TokenSaver.MaxBytes > 0 &&
 		c.Gateway.TokenSaver.MaxBytes < c.Gateway.TokenSaver.MinBytes {
 		return fmt.Errorf("gateway.token_saver.max_bytes must be >= min_bytes")
+	}
+	switch strings.ToLower(strings.TrimSpace(c.Gateway.TokenSaver.Strategy)) {
+	case "", "9router", "conservative":
+	default:
+		return fmt.Errorf("gateway.token_saver.strategy must be one of: 9router/conservative")
 	}
 	switch strings.ToLower(strings.TrimSpace(c.Gateway.TokenSaver.OutputStyleLevel)) {
 	case "", "concise", "terse":

@@ -7,6 +7,11 @@ export default {
     enabled: 'Enabled',
     disabled: 'Disabled',
     config: 'Config',
+    strategy: 'RTK strategy',
+    strategies: {
+      '9router': '9router compatible',
+      conservative: 'Conservative',
+    },
     minBytes: 'Min bytes',
     maxBytes: 'Max bytes',
     lastUpdated: 'Last hit',

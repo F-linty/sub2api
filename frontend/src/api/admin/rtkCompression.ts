@@ -126,6 +126,7 @@ export interface CodexChainSnapshot {
 
 export interface RTKCompressionSnapshot {
   enabled: boolean
+  strategy?: '9router' | 'conservative' | string
   min_bytes: number
   max_bytes: number
   output_style?: RTKOutputStyleConfig
@@ -153,6 +154,7 @@ export interface RTKOutputStyleConfig {
 }
 
 export interface UpdateRTKCompressionConfigRequest {
+  strategy?: '9router' | 'conservative' | string
   output_style?: RTKOutputStyleConfig
 }
 

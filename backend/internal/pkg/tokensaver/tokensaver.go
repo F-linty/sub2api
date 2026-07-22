@@ -8,14 +8,19 @@ import (
 	"path"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
 )
 
 const (
+	StrategyConservative       = "conservative"
+	Strategy9Router            = "9router"
 	defaultMinBytes            = 2048
 	defaultMaxBytes            = 512 << 10
+	nineRouterMinBytes         = 500
+	nineRouterMaxBytes         = 10 << 20
 	markerPrefix               = "[sub2api token saver:"
 	referenceMinBytes          = 768
 	defaultReferenceKeepRecent = 2
@@ -28,6 +33,7 @@ const (
 type Options struct {
 	MinBytes            int
 	MaxBytes            int
+	Strategy            string
 	ReferenceScope      string
 	ReferenceKeepRecent int
 }
@@ -94,6 +100,18 @@ func CompressJSON(body []byte, opts Options) (Result, error) {
 }
 
 func normalizeOptions(opts Options) Options {
+	opts.Strategy = strings.ToLower(strings.TrimSpace(opts.Strategy))
+	if opts.Strategy == "" {
+		opts.Strategy = StrategyConservative
+	}
+	if opts.Strategy == Strategy9Router {
+		if opts.MinBytes <= 0 || opts.MinBytes == defaultMinBytes {
+			opts.MinBytes = nineRouterMinBytes
+		}
+		if opts.MaxBytes <= 0 || opts.MaxBytes == defaultMaxBytes {
+			opts.MaxBytes = nineRouterMaxBytes
+		}
+	}
 	if opts.MinBytes <= 0 {
 		opts.MinBytes = defaultMinBytes
 	}
@@ -124,6 +142,9 @@ func mutateKnownToolOutputs(root any, opts Options) ([]Hit, []Miss) {
 				fieldHits, fieldMisses := compressStringField(msg, "content", fmt.Sprintf("$.messages[%d].content", i), opts)
 				hits = append(hits, fieldHits...)
 				misses = append(misses, fieldMisses...)
+				arrayHits, arrayMisses := compressTextParts(msg["content"], fmt.Sprintf("$.messages[%d].content", i), "text", opts)
+				hits = append(hits, arrayHits...)
+				misses = append(misses, arrayMisses...)
 			}
 			contentHits, contentMisses := mutateAnthropicContent(msg["content"], fmt.Sprintf("$.messages[%d].content", i), opts)
 			hits = append(hits, contentHits...)
@@ -141,6 +162,9 @@ func mutateKnownToolOutputs(root any, opts Options) ([]Hit, []Miss) {
 				fieldHits, fieldMisses := compressStringField(item, "output", fmt.Sprintf("$.input[%d].output", i), opts)
 				hits = append(hits, fieldHits...)
 				misses = append(misses, fieldMisses...)
+				arrayHits, arrayMisses := compressTextParts(item["output"], fmt.Sprintf("$.input[%d].output", i), "input_text", opts)
+				hits = append(hits, arrayHits...)
+				misses = append(misses, arrayMisses...)
 			}
 			contentHits, contentMisses := mutateAnthropicContent(item["content"], fmt.Sprintf("$.input[%d].content", i), opts)
 			hits = append(hits, contentHits...)
@@ -148,6 +172,28 @@ func mutateKnownToolOutputs(root any, opts Options) ([]Hit, []Miss) {
 		}
 	}
 
+	return hits, misses
+}
+
+func compressTextParts(raw any, basePath, textType string, opts Options) ([]Hit, []Miss) {
+	parts, ok := raw.([]any)
+	if !ok {
+		return nil, nil
+	}
+	var hits []Hit
+	var misses []Miss
+	for i, rawPart := range parts {
+		part, ok := rawPart.(map[string]any)
+		if !ok || isErrorToolResult(part) {
+			continue
+		}
+		if typ, _ := part["type"].(string); typ != textType {
+			continue
+		}
+		fieldHits, fieldMisses := compressStringField(part, "text", fmt.Sprintf("%s[%d].text", basePath, i), opts)
+		hits = append(hits, fieldHits...)
+		misses = append(misses, fieldMisses...)
+	}
 	return hits, misses
 }
 
@@ -204,6 +250,7 @@ func collectKnownToolStringFields(root any) []toolStringField {
 			}
 			if role, _ := msg["role"].(string); role == "tool" {
 				fields = append(fields, toolStringField{obj: msg, key: "content", path: fmt.Sprintf("$.messages[%d].content", i)})
+				fields = append(fields, collectTextPartStringFields(msg["content"], fmt.Sprintf("$.messages[%d].content", i), "text")...)
 			}
 			fields = append(fields, collectAnthropicContentStringFields(msg["content"], fmt.Sprintf("$.messages[%d].content", i))...)
 		}
@@ -216,8 +263,27 @@ func collectKnownToolStringFields(root any) []toolStringField {
 			}
 			if typ, _ := item["type"].(string); typ == "function_call_output" {
 				fields = append(fields, toolStringField{obj: item, key: "output", path: fmt.Sprintf("$.input[%d].output", i)})
+				fields = append(fields, collectTextPartStringFields(item["output"], fmt.Sprintf("$.input[%d].output", i), "input_text")...)
 			}
 			fields = append(fields, collectAnthropicContentStringFields(item["content"], fmt.Sprintf("$.input[%d].content", i))...)
+		}
+	}
+	return fields
+}
+
+func collectTextPartStringFields(raw any, basePath, textType string) []toolStringField {
+	parts, ok := raw.([]any)
+	if !ok {
+		return nil
+	}
+	var fields []toolStringField
+	for i, rawPart := range parts {
+		part, ok := rawPart.(map[string]any)
+		if !ok || isErrorToolResult(part) {
+			continue
+		}
+		if typ, _ := part["type"].(string); typ == textType {
+			fields = append(fields, toolStringField{obj: part, key: "text", path: fmt.Sprintf("%s[%d].text", basePath, i)})
 		}
 	}
 	return fields
@@ -596,7 +662,7 @@ func compressToolText(text string, opts Options) (string, string, string, bool) 
 	if strings.Contains(text, markerPrefix) {
 		return "", "", "already_compressed", false
 	}
-	if body, filter, ok := compressShellOutputNamed(text); ok {
+	if body, filter, ok := compressShellOutputNamedWithOptions(text, opts); ok {
 		out := wrapCompressed(filter, size, body)
 		if len(out) < size {
 			return out, filter, "", true
@@ -604,24 +670,7 @@ func compressToolText(text string, opts Options) (string, string, string, bool) 
 		return "", "", "not_smaller", false
 	}
 	matched := false
-	candidates := []struct {
-		name string
-		fn   func(string) (string, bool)
-	}{
-		{"git_log", compressGitLog},
-		{"git_diff", compressGitDiff},
-		{"git_status", compressGitStatus},
-		{"build_log", compressBuildLog},
-		{"grep", compressGrep},
-		{"find", compressFindOutput},
-		{"tree", compressTreeOutput},
-		{"ls", compressLSOutput},
-		{"search_list", compressSearchList},
-		{"read_numbered", compressReadNumbered},
-		{"dedup_log", compressDedupLog},
-		{"smart_truncate", compressSmartTruncate},
-		{"file_list", compressFileList},
-	}
+	candidates := compressionCandidates(opts)
 	for _, candidate := range candidates {
 		body, ok := candidate.fn(text)
 		if !ok {
@@ -637,6 +686,202 @@ func compressToolText(text string, opts Options) (string, string, string, bool) 
 		return "", "", "not_smaller", false
 	}
 	return "", "", "no_filter", false
+}
+
+type compressionCandidate struct {
+	name string
+	fn   func(string) (string, bool)
+}
+
+func compressionCandidates(opts Options) []compressionCandidate {
+	if opts.Strategy == Strategy9Router {
+		return []compressionCandidate{
+			{"git-log", compressGitLog},
+			{"git-diff", compressGitDiff9Router},
+			{"git-status", compressGitStatus9Router},
+			{"build-output", compressBuildOutput9Router},
+			{"grep", compressGrep9Router},
+			{"find", compressFindOutput9Router},
+			{"tree", compressTreeOutput},
+			{"ls", compressLSOutput},
+			{"search-list", compressSearchList9Router},
+			{"read-numbered", compressReadNumbered},
+			{"dedup-log", compressDedupLog},
+			{"smart-truncate", compressSmartTruncate},
+			{"file-list", compressFileList},
+		}
+	}
+	return []compressionCandidate{
+		{"git_log", compressGitLog},
+		{"git_diff", compressGitDiff},
+		{"git_status", compressGitStatus},
+		{"build_log", compressBuildLog},
+		{"grep", compressGrep},
+		{"find", compressFindOutput},
+		{"tree", compressTreeOutput},
+		{"ls", compressLSOutput},
+		{"search_list", compressSearchList},
+		{"read_numbered", compressReadNumbered},
+		{"dedup_log", compressDedupLog},
+		{"smart_truncate", compressSmartTruncate},
+		{"file_list", compressFileList},
+	}
+}
+
+func compressGitDiff9Router(text string) (string, bool) {
+	out, ok := compressGitDiff(text)
+	if !ok {
+		return "", false
+	}
+	return out, true
+}
+
+func compressGitStatus9Router(text string) (string, bool) {
+	return compressGitStatus(text)
+}
+
+func compressGrep9Router(text string) (string, bool) {
+	lines := splitLines(text)
+	type match struct {
+		lineNum string
+		content string
+	}
+	byFile := map[string][]match{}
+	total := 0
+	for _, line := range lines {
+		first := strings.Index(line, ":")
+		if first < 0 {
+			continue
+		}
+		second := strings.Index(line[first+1:], ":")
+		if second < 0 {
+			continue
+		}
+		second += first + 1
+		lineNum := line[first+1 : second]
+		if _, err := strconv.Atoi(lineNum); err != nil {
+			continue
+		}
+		file := line[:first]
+		content := line[second+1:]
+		total++
+		byFile[file] = append(byFile[file], match{lineNum: lineNum, content: content})
+	}
+	if total == 0 {
+		return "", false
+	}
+	files := make([]string, 0, len(byFile))
+	for file := range byFile {
+		files = append(files, file)
+	}
+	sort.Strings(files)
+	out := []string{fmt.Sprintf("%d matches in %dF:", total, len(files)), ""}
+	for _, file := range files {
+		matches := byFile[file]
+		out = append(out, fmt.Sprintf("[file] %s (%d):", file, len(matches)))
+		limit := 10
+		if len(matches) < limit {
+			limit = len(matches)
+		}
+		for _, m := range matches[:limit] {
+			out = append(out, fmt.Sprintf("  %4s: %s", m.lineNum, strings.TrimSpace(m.content)))
+		}
+		if len(matches) > limit {
+			out = append(out, fmt.Sprintf("  +%d", len(matches)-limit))
+		}
+		out = append(out, "")
+	}
+	return strings.Join(out, "\n"), true
+}
+
+func compressFindOutput9Router(text string) (string, bool) {
+	lines := nonEmptyLines(text)
+	if len(lines) < 3 {
+		return "", false
+	}
+	for _, line := range lines {
+		if !isPathLikeOutputLine(line) {
+			return "", false
+		}
+	}
+	return compactPathLines("find", lines, findPerDirMax, 20), true
+}
+
+func compressSearchList9Router(text string) (string, bool) {
+	lines := splitLines(text)
+	if len(lines) < 3 || !searchListHeaderRE.MatchString(strings.TrimSpace(lines[0])) {
+		return "", false
+	}
+	return compactPathLines("search-list", nonEmptyLines(strings.Join(lines[1:], "\n")), searchListPerDirMax, 20), true
+}
+
+func compressBuildOutput9Router(text string) (string, bool) {
+	lines := splitLines(text)
+	if len(lines) == 0 {
+		return "", false
+	}
+	var errors []string
+	var warnings []string
+	var deprecations []string
+	var summaries []string
+	compilingCount := 0
+	downloadingCount := 0
+	for _, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		lower := strings.ToLower(trimmed)
+		if trimmed == "" {
+			continue
+		}
+		switch {
+		case strings.HasPrefix(lower, "npm err!") || strings.HasPrefix(lower, "npm error") ||
+			strings.HasPrefix(lower, "yarn error") || strings.HasPrefix(lower, "error[") ||
+			strings.HasPrefix(lower, "error:") || strings.HasPrefix(lower, "error -->") ||
+			strings.HasPrefix(lower, "error ") || strings.HasPrefix(lower, "build failed") ||
+			strings.HasPrefix(lower, "[error]") || strings.HasPrefix(lower, "error"):
+			errors = append(errors, line)
+		case strings.HasPrefix(lower, "npm warn deprecated"):
+			deprecations = append(deprecations, line)
+		case strings.HasPrefix(lower, "npm warn") || strings.HasPrefix(lower, "yarn warn") ||
+			strings.HasPrefix(lower, "warning[") || strings.HasPrefix(lower, "warning:") ||
+			strings.HasPrefix(lower, "warning -->") || strings.HasPrefix(lower, "[warning]"):
+			warnings = append(warnings, line)
+		case strings.HasPrefix(lower, "compiling ") || strings.Contains(lower, " compiling "):
+			compilingCount++
+		case strings.HasPrefix(lower, "downloading ") || strings.HasPrefix(lower, "fetching "):
+			downloadingCount++
+		case buildSummaryRE.MatchString(lower) || strings.HasPrefix(lower, "finished ") ||
+			strings.HasPrefix(lower, "build success") || strings.HasPrefix(lower, "successfully installed") ||
+			strings.HasPrefix(lower, "successfully built") || regexp.MustCompile(`^\d+\s+(vulnerabilities|packages?|warnings?|errors?)`).MatchString(lower) ||
+			strings.HasPrefix(lower, "to address ") || strings.HasPrefix(lower, "run `npm ") ||
+			strings.Contains(lower, "packages are looking for funding"):
+			summaries = append(summaries, line)
+		}
+	}
+	if len(errors) == 0 && len(warnings) == 0 && len(deprecations) == 0 && compilingCount == 0 && downloadingCount == 0 && len(summaries) == 0 {
+		return "", false
+	}
+	var out []string
+	if len(deprecations) > 0 {
+		out = append(out, dedupeLimit(deprecations, 3)...)
+		if len(deprecations) > 3 {
+			out = append(out, fmt.Sprintf("... +%d more deprecated packages", len(deprecations)-3))
+		}
+	}
+	if compilingCount > 0 {
+		out = append(out, fmt.Sprintf("Compiled %d packages", compilingCount))
+	}
+	if downloadingCount > 0 {
+		out = append(out, fmt.Sprintf("Downloaded %d packages", downloadingCount))
+	}
+	out = append(out, dedupeLimit(errors, 120)...)
+	if len(warnings) > 0 {
+		out = append(out, dedupeLimit(warnings, 5)...)
+		if len(warnings) > 5 {
+			out = append(out, fmt.Sprintf("... +%d more warnings", len(warnings)-5))
+		}
+	}
+	out = append(out, dedupeLimit(summaries, 12)...)
+	return strings.Join(out, "\n"), true
 }
 
 func newMiss(path, value string, opts Options, reason string) *Miss {

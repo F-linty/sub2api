@@ -7,6 +7,11 @@ export default {
     enabled: '已启用',
     disabled: '未启用',
     config: '配置',
+    strategy: 'RTK策略',
+    strategies: {
+      '9router': '9router兼容',
+      conservative: '保守',
+    },
     minBytes: '起压阈值',
     maxBytes: '处理上限',
     lastUpdated: '最后命中',
