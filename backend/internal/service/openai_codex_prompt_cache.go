@@ -18,17 +18,39 @@ type codexPromptCacheResolution struct {
 }
 
 func resolveCodexOAuthPromptCacheKey(c *gin.Context, account *Account, reqBody map[string]any, model string) codexPromptCacheResolution {
-	if existing, ok := reqBody["prompt_cache_key"].(string); ok {
-		if key := strings.TrimSpace(existing); key != "" {
-			return codexPromptCacheResolution{Key: key, Source: "body"}
+	if c != nil {
+		for _, candidate := range []struct {
+			header string
+			source string
+		}{
+			{header: "x-session-id", source: "header_x_session_id"},
+			{header: "session-id", source: "header_session_id"},
+			{header: "session_id", source: "header_session_id"},
+			{header: "x-amp-thread-id", source: "header_x_amp_thread_id"},
+			{header: "x-client-request-id", source: "header_x_client_request_id"},
+			{header: "conversation_id", source: "header_conversation_id"},
+		} {
+			if key := strings.TrimSpace(c.GetHeader(candidate.header)); key != "" {
+				return codexPromptCacheResolution{Key: deriveCodexPromptCacheKeyFromSeed(c, account, model, candidate.source, key), Source: candidate.source}
+			}
 		}
 	}
-	if c != nil {
-		if key := strings.TrimSpace(c.GetHeader("session_id")); key != "" {
-			return codexPromptCacheResolution{Key: deriveCodexPromptCacheKeyFromSeed(c, account, model, "header_session_id", key), Source: "header_session_id"}
-		}
-		if key := strings.TrimSpace(c.GetHeader("conversation_id")); key != "" {
-			return codexPromptCacheResolution{Key: deriveCodexPromptCacheKeyFromSeed(c, account, model, "header_conversation_id", key), Source: "header_conversation_id"}
+	for _, candidate := range []struct {
+		bodyKey string
+		source  string
+		raw     bool
+	}{
+		{bodyKey: "prompt_cache_key", source: "body", raw: true},
+		{bodyKey: "session_id", source: "body_session_id"},
+		{bodyKey: "conversation_id", source: "body_conversation_id"},
+	} {
+		if existing, ok := reqBody[candidate.bodyKey].(string); ok {
+			if key := strings.TrimSpace(existing); key != "" {
+				if candidate.raw {
+					return codexPromptCacheResolution{Key: key, Source: candidate.source}
+				}
+				return codexPromptCacheResolution{Key: deriveCodexPromptCacheKeyFromSeed(c, account, model, candidate.source, key), Source: candidate.source}
+			}
 		}
 	}
 	if key := deriveCodexPromptCacheKeyFromBody(c, account, reqBody, model); key != "" {

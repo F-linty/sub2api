@@ -107,6 +107,23 @@ var openAICodexOAuthUnsupportedFields = append([]string{
 	"presence_penalty",
 }, openAIChatGPTInternalUnsupportedFields...)
 
+var openAICodexOAuthAllowedTopLevelFields = map[string]struct{}{
+	"model":               {},
+	"input":               {},
+	"instructions":        {},
+	"tools":               {},
+	"tool_choice":         {},
+	"stream":              {},
+	"store":               {},
+	"reasoning":           {},
+	"service_tier":        {},
+	"include":             {},
+	"parallel_tool_calls": {},
+	"prompt_cache_key":    {},
+	"client_metadata":     {},
+	"text":                {},
+}
+
 func applyCodexOAuthTransform(reqBody map[string]any, isCodexCLI bool, isCompact bool) codexTransformResult {
 	return applyCodexOAuthTransformWithOptions(reqBody, codexOAuthTransformOptions{
 		IsCodexCLI: isCodexCLI,
@@ -270,7 +287,26 @@ func applyCodexOAuthTransformWithOptions(reqBody map[string]any, opts codexOAuth
 		result.Modified = true
 	}
 
+	if !opts.IsCompact && stripNonCodexOAuthTopLevelFields(reqBody) {
+		result.Modified = true
+	}
+
 	return result
+}
+
+func stripNonCodexOAuthTopLevelFields(reqBody map[string]any) bool {
+	if len(reqBody) == 0 {
+		return false
+	}
+	modified := false
+	for key := range reqBody {
+		if _, ok := openAICodexOAuthAllowedTopLevelFields[key]; ok {
+			continue
+		}
+		delete(reqBody, key)
+		modified = true
+	}
+	return modified
 }
 
 func normalizeCodexToolChoice(reqBody map[string]any) bool {

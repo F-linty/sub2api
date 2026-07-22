@@ -17,6 +17,17 @@ func TestResolveCodexOAuthPromptCacheKeyUsesExistingBodyKey(t *testing.T) {
 	require.Equal(t, "body", got.Source)
 }
 
+func TestResolveCodexOAuthPromptCacheKeyHeaderSessionBeatsBodyKey(t *testing.T) {
+	c := codexPromptCacheTestContext(map[string]string{"x-session-id": "header-session"})
+	reqBody := map[string]any{"prompt_cache_key": "body-key"}
+
+	got := resolveCodexOAuthPromptCacheKey(c, &Account{ID: 10}, reqBody, "gpt-5.3-codex")
+
+	require.NotEmpty(t, got.Key)
+	require.NotEqual(t, "body-key", got.Key)
+	require.Equal(t, "header_x_session_id", got.Source)
+}
+
 func TestResolveCodexOAuthPromptCacheKeyDerivesFromHeaderSessionID(t *testing.T) {
 	c := codexPromptCacheTestContext(map[string]string{"session_id": "sess-1"})
 	account := &Account{ID: 10}
@@ -29,6 +40,31 @@ func TestResolveCodexOAuthPromptCacheKeyDerivesFromHeaderSessionID(t *testing.T)
 	require.Equal(t, got1.Key, got2.Key)
 	require.Equal(t, "header_session_id", got1.Source)
 	require.Contains(t, got1.Key, codexAutoPromptCacheKeyPrefix)
+}
+
+func TestResolveCodexOAuthPromptCacheKeyDerivesFromClientRequestID(t *testing.T) {
+	c := codexPromptCacheTestContext(map[string]string{"x-client-request-id": "client-request-1"})
+	account := &Account{ID: 10}
+	reqBody := map[string]any{"model": "gpt-5.3-codex", "input": []any{"hello"}}
+
+	got := resolveCodexOAuthPromptCacheKey(c, account, reqBody, "gpt-5.3-codex")
+
+	require.NotEmpty(t, got.Key)
+	require.Equal(t, "header_x_client_request_id", got.Source)
+}
+
+func TestResolveCodexOAuthPromptCacheKeyDerivesFromBodySessionID(t *testing.T) {
+	account := &Account{ID: 10}
+	reqBody := map[string]any{
+		"model":      "gpt-5.3-codex",
+		"session_id": "body-session-1",
+		"input":      []any{"hello"},
+	}
+
+	got := resolveCodexOAuthPromptCacheKey(nil, account, reqBody, "gpt-5.3-codex")
+
+	require.NotEmpty(t, got.Key)
+	require.Equal(t, "body_session_id", got.Source)
 }
 
 func TestResolveCodexOAuthPromptCacheKeyBodySeedIsStableAndIsolated(t *testing.T) {

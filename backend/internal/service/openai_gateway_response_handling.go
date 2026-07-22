@@ -774,6 +774,7 @@ func openAIUsageFromGJSON(value gjson.Result) (OpenAIUsage, bool) {
 	}
 	cacheReadTokens := openAICacheReadTokensFromUsage(value)
 	cacheCreationTokens := openAICacheCreationTokensFromUsage(value)
+	reasoningTokens := openAIReasoningTokensFromUsage(value)
 	imageOutputTokens := value.Get("output_tokens_details.image_tokens").Int()
 	if imageOutputTokens == 0 {
 		imageOutputTokens = value.Get("completion_tokens_details.image_tokens").Int()
@@ -783,6 +784,7 @@ func openAIUsageFromGJSON(value gjson.Result) (OpenAIUsage, bool) {
 		OutputTokens:             int(outputTokens),
 		CacheCreationInputTokens: cacheCreationTokens,
 		CacheReadInputTokens:     cacheReadTokens,
+		ReasoningTokens:          reasoningTokens,
 		ImageOutputTokens:        int(imageOutputTokens),
 	}, true
 }
@@ -801,6 +803,14 @@ func openAICacheReadTokensFromUsage(value gjson.Result) int {
 		value.Get("cache_read_input_tokens"),
 		value.Get("cache_read_tokens"),
 		value.Get("cached_tokens"),
+	)
+}
+
+func openAIReasoningTokensFromUsage(value gjson.Result) int {
+	return firstPositiveGJSONInt(
+		value.Get("output_tokens_details.reasoning_tokens"),
+		value.Get("completion_tokens_details.reasoning_tokens"),
+		value.Get("reasoning_tokens"),
 	)
 }
 

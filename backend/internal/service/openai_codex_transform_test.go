@@ -1424,6 +1424,65 @@ func TestApplyCodexOAuthTransform_StripsChatGPTInternalUnsupportedFields(t *test
 	}
 }
 
+func TestApplyCodexOAuthTransform_StripsNonCodexTopLevelFields(t *testing.T) {
+	reqBody := map[string]any{
+		"model":                "gpt-5.5",
+		"input":                []any{map[string]any{"type": "message", "role": "user", "content": "hi"}},
+		"instructions":         "be useful",
+		"tools":                []any{map[string]any{"type": "function", "name": "shell"}},
+		"tool_choice":          "auto",
+		"stream":               false,
+		"store":                true,
+		"reasoning":            map[string]any{"effort": "low"},
+		"service_tier":         "default",
+		"include":              []any{"reasoning.encrypted_content"},
+		"prompt_cache_key":     "cache-key",
+		"client_metadata":      map[string]any{"x-codex-installation-id": "device-1"},
+		"text":                 map[string]any{"verbosity": "low"},
+		"previous_response_id": "resp_should_not_forward",
+		"parallel_tool_calls":  true,
+		"n":                    2,
+		"seed":                 123,
+		"logprobs":             true,
+		"top_logprobs":         3,
+		"unknown":              "drop me",
+	}
+
+	result := applyCodexOAuthTransform(reqBody, true, false)
+
+	require.True(t, result.Modified)
+	for _, key := range []string{
+		"model",
+		"input",
+		"instructions",
+		"tools",
+		"tool_choice",
+		"stream",
+		"store",
+		"reasoning",
+		"service_tier",
+		"include",
+		"parallel_tool_calls",
+		"prompt_cache_key",
+		"client_metadata",
+		"text",
+	} {
+		require.Contains(t, reqBody, key)
+	}
+	for _, key := range []string{
+		"previous_response_id",
+		"n",
+		"seed",
+		"logprobs",
+		"top_logprobs",
+		"unknown",
+	} {
+		require.NotContains(t, reqBody, key)
+	}
+	require.True(t, reqBody["stream"].(bool))
+	require.False(t, reqBody["store"].(bool))
+}
+
 func TestApplyCodexOAuthTransform_ExtractsSystemMessages(t *testing.T) {
 	reqBody := map[string]any{
 		"model": "gpt-5.1",
